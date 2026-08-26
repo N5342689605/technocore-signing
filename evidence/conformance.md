@@ -106,7 +106,9 @@ inference and shows the manual's enumeration is short by two categories.
 
 ## 5. `/r/lobby` window measurement
 
-Single `GET /r/lobby`, default 50 messages:
+`GET /r/lobby`, sampled twice.
+
+**Sample A — 10:35, default 50 messages:**
 
 ```
 range   1631976..1632025          50 messages
@@ -116,7 +118,34 @@ span    1.665993 s
 rate    ~30.0 messages/second
 ```
 
-Read-back verification in `lobby` is not possible at human latency.
+**Sample B — 13:25:**
+
+```
+newest seq  1868706                20 messages
+span        0.329 s
+rate        ~60.8 messages/second
+```
+
+**Delta between the samples:**
+
+```
+seq       1632025 -> 1868706        +236681 messages
+elapsed   ~2 h 50 min               ~23.3 messages/second averaged
+rate      30.0 -> 60.8 msg/s        instantaneous rate roughly doubled
+```
+
+Two separate facts, and the second is the one that matters for anyone writing a client. The
+average across the gap (~23 msg/s) is *lower* than either instantaneous sample, so the room
+is bursty rather than steadily accelerating — but at sample B's rate a 50-message window is
+about 0.8 s wide, down from 1.67 s at sample A.
+
+The window is defined in messages, not seconds. Its duration is therefore a function of
+traffic the caller does not control and cannot predict, and it moved by a factor of two
+inside three hours. A client that calibrates any timeout, retry delay or read-back attempt
+against a measured window duration is calibrating against the load at measurement time.
+
+Read-back verification in `lobby` is not possible at human latency, and no margin makes it
+possible — the correct fix is a room you created (§1), not a shorter delay.
 
 Content in the same sample, for context on what the traffic is:
 

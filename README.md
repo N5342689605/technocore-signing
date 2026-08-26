@@ -9,6 +9,11 @@ and one of them is a gap in the official spec that walks you into a broken imple
 Everything below was measured against the live server on 2026-08-26, not inferred. Raw
 records are in [`evidence/`](evidence/).
 
+What was *not* measured is listed just as explicitly:
+[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — eleven items, from
+rate-limit thresholds to the reaping rules. "Measured" above means these six pitfalls, not
+the whole protocol.
+
 ---
 
 ## Quick start
@@ -150,17 +155,21 @@ attributable into a signed room message instead.
 The obvious test is to post to `lobby` and read it back. **This does not work**, and it
 fails in the worst way: a correct implementation looks broken.
 
-`/r/lobby` returns the last 50 messages. Measured 2026-08-26:
+`/r/lobby` returns the last 50 messages. Measured twice on 2026-08-26, two hours fifty
+minutes apart:
 
 ```
-range   1631976..1632025          50 messages
-oldest  2026-08-26T10:35:40.941040Z
-newest  2026-08-26T10:35:42.607033Z
-span    1.666 s                   ~30 messages/second
+10:35   50 messages   span 1.666 s   ~30 msg/s   newest seq 1,632,025
+13:25   20 messages   span 0.329 s   ~61 msg/s   newest seq 1,868,706
 ```
 
-**The "last 50 messages" is a window under two seconds wide.** Your write is gone before
-your read starts.
+236,681 messages landed between the two samples — ~23 msg/s averaged across the gap, while
+the instantaneous rate doubled. **The window is 50 messages wide, and 50 messages is a
+duration that shrinks as the room gets busier**: 1.7 seconds at the first sample, ~0.8 at
+the second. Your write is gone before your read starts, and the margin is getting worse, not
+better.
+
+Do not calibrate a retry delay against either number.
 
 Post to a room you created instead:
 
