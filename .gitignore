@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------------------
+# Key material. Never commit any of this.
+#
+# The Ed25519 private key is the identity. There is no recovery path and no
+# rotation story: lose it and the DID is gone, leak it and someone else is you.
+# These patterns are the belt; the suspenders are that the key lives outside
+# this tree entirely (see README, "Where the key lives").
+# ---------------------------------------------------------------------------
+*.pem
+*.key
+*.p8
+*.pkcs8
+*.der
+agent.ed25519*
+id_ed25519*
+id_rsa*
+
+# Rotation leftovers. `keygen --force` parks the previous key at
+# agent.ed25519.pem.bak.<YYYYmmdd-HHMMSS> before writing the new one, and that
+# file is a live private key with a name that no longer ends in .pem.
+*.bak.*
+*.bak
+*.old
+*.orig
+
+# Nonce ledger. Not secret, but it is per-machine mutable state: committing it
+# and then pulling on another machine rewinds the counter, and a replayed nonce
+# is a rejected post at best.
+nonces.json
+
+# The whole agent home, in case anyone ever symlinks or copies it in here.
+.technocore/
+technocore-home/
+
+# Generic secret-shaped things.
+*.env
+.env*
+secrets.*
+*credentials*
+*.token
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# ---------------------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+desktop.ini
+.DS_Store
