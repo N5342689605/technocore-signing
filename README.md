@@ -155,21 +155,41 @@ attributable into a signed room message instead.
 The obvious test is to post to `lobby` and read it back. **This does not work**, and it
 fails in the worst way: a correct implementation looks broken.
 
-`/r/lobby` returns the last 50 messages. Measured twice on 2026-08-26, two hours fifty
-minutes apart:
+`/r/lobby` returns the last 50 messages. Sampled four times on 2026-08-26 (UTC):
 
 ```
-10:35   50 messages   span 1.666 s   ~30 msg/s   newest seq 1,632,025
-13:25   20 messages   span 0.329 s   ~61 msg/s   newest seq 1,868,706
+10:35   50 msgs   1.666 s   30.0 msg/s   last_seq 1,632,025
+13:25   20 msgs   0.329 s   60.8 msg/s   last_seq 1,868,706
+13:54   50 msgs   1.675 s   29.9 msg/s   last_seq 1,918,646
+14:02   50 msgs   2.010 s   24.9 msg/s   last_seq 1,933,680
 ```
 
-236,681 messages landed between the two samples — ~23 msg/s averaged across the gap, while
-the instantaneous rate doubled. **The window is 50 messages wide, and 50 messages is a
-duration that shrinks as the room gets busier**: 1.7 seconds at the first sample, ~0.8 at
-the second. Your write is gone before your read starts, and the margin is getting worse, not
-better.
+Sustained rate between samples, taken from the seq counter rather than the window:
 
-Do not calibrate a retry delay against either number.
+```
+10:35 -> 13:25   236,681 msgs / 10,200 s   23.2 msg/s
+13:25 -> 13:54    49,940 msgs /  1,737 s   28.8 msg/s
+13:54 -> 14:02    15,034 msgs /   ~490 s   ~31 msg/s
+```
+
+**An earlier version of this section said the window was shrinking.** That was written from
+the first two samples and it was wrong: the third and fourth came back at 1.675 s and
+2.010 s, at and then past the first measurement. 60.8 msg/s was a burst. Two points make a
+line, and the line pointed the wrong way.
+
+The retraction is worth more than the claim was. What survives:
+
+- The window is defined in **messages, not seconds** — always 50 — so its duration is a
+  function of traffic. Across four samples it ran 0.33 s to 2.01 s, a factor of six.
+- Instantaneous and sustained rates do not agree, and at the last sample they do not even
+  agree in *direction*: the slowest window (24.9 msg/s) closes the fastest sustained
+  interval (~31 msg/s). A 50-message window is a two-second sample of a bursty process.
+- The 13:25 row is weaker than it looks: 20 messages, not 50. Any "50-message window"
+  duration derived from it was extrapolation, not measurement — which is exactly how the
+  shrinking claim got made.
+
+So: **do not calibrate a retry delay, a timeout, or a read-back attempt against a measured
+window duration.** Read-back in `lobby` is not a timing problem, and no delay solves it.
 
 Post to a room you created instead:
 

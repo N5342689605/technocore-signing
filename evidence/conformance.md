@@ -126,26 +126,85 @@ span        0.329 s
 rate        ~60.8 messages/second
 ```
 
-**Delta between the samples:**
+**Sample C — 13:54:**
 
 ```
-seq       1632025 -> 1868706        +236681 messages
-elapsed   ~2 h 50 min               ~23.3 messages/second averaged
-rate      30.0 -> 60.8 msg/s        instantaneous rate roughly doubled
+newest seq  1918646                50 messages
+span        1.675 s
+rate        ~29.9 messages/second
 ```
 
-Two separate facts, and the second is the one that matters for anyone writing a client. The
-average across the gap (~23 msg/s) is *lower* than either instantaneous sample, so the room
-is bursty rather than steadily accelerating — but at sample B's rate a 50-message window is
-about 0.8 s wide, down from 1.67 s at sample A.
+**Sample D — 14:02:37:**
 
-The window is defined in messages, not seconds. Its duration is therefore a function of
-traffic the caller does not control and cannot predict, and it moved by a factor of two
-inside three hours. A client that calibrates any timeout, retry delay or read-back attempt
-against a measured window duration is calibrating against the load at measurement time.
+```
+range       1933631..1933680       50 messages
+oldest      2026-08-26T14:02:35.034019Z
+newest      2026-08-26T14:02:37.043633Z
+span        2.009614 s
+rate        ~24.9 messages/second
+```
 
-Read-back verification in `lobby` is not possible at human latency, and no margin makes it
-possible — the correct fix is a room you created (§1), not a shorter delay.
+**Instantaneous rate, all four:**
+
+```
+10:35   50 msgs / 1.666 s   30.0 msg/s
+13:25   20 msgs / 0.329 s   60.8 msg/s
+13:54   50 msgs / 1.675 s   29.9 msg/s
+14:02   50 msgs / 2.010 s   24.9 msg/s      <- slowest of the four
+```
+
+**Sustained rate between samples, from the seq counter:**
+
+```
+A -> B   1632025 -> 1868706   +236681 / 10200 s   23.2 msg/s
+B -> C   1868706 -> 1918646    +49940 /  1737 s   28.8 msg/s
+C -> D   1918646 -> 1933680    +15034 /  ~490 s   ~31 msg/s   <- fastest interval
+```
+
+Sample C's wall time is known only to the minute, so the C→D elapsed figure carries about
+±30 s; the rate is between 29 and 33 msg/s across that range. Nothing below depends on which
+end of it is right.
+
+### 5.1 A retracted claim
+
+An earlier revision of this section, and of README §4, stated that the window was shrinking.
+It was drawn from samples A and B alone. Samples C and D refute it: 1.675 s and 2.010 s, at
+and then past sample A's 1.666 s. Sample B was a burst.
+
+Two independent flaws produced that claim, and both are worth naming because neither is
+visible from inside a two-point dataset:
+
+1. **Two points cannot distinguish a trend from a burst.** The A→B *sustained* average
+   (23.2 msg/s) was already lower than either instantaneous sample, which was evidence
+   against the trend reading and was recorded in the same revision without being followed.
+2. **Sample B is 20 messages, not 50.** The "0.8 s window" figure that made the shrinkage
+   concrete was `50 / (20 / 0.329)` — an extrapolation from a differently-sized sample
+   presented alongside three direct measurements. Nothing in the table marked it as derived.
+
+### 5.2 What the four samples do support
+
+The instantaneous window duration ranged 0.33 s to 2.01 s — a factor of six — with no
+monotone direction. The sustained rate ranged 23.2 to ~31 msg/s, a factor of 1.3, and *did*
+rise across the three intervals. So the two measures disagree, and at sample D they disagree
+in direction: the slowest instantaneous window closes the fastest sustained interval.
+
+That is not a contradiction, it is what sampling a bursty arrival process with a 50-message
+(≈2 s) window looks like. The window is not an estimator of the sustained rate, and neither
+number predicts the other.
+
+Practical consequence, which is unchanged from the original and is the only part that was
+ever load-bearing: the window is defined in messages, so its duration is set by traffic the
+caller neither controls nor predicts. **A client that calibrates a timeout, retry delay or
+read-back attempt against a measured window duration is calibrating against the load at
+measurement time.** Read-back verification in `lobby` is not possible at human latency and
+no margin makes it possible — the fix is a room you created (§1), not a longer delay.
+
+### 5.3 Rate convention
+
+Rates above are `N / span`. Counting inter-arrival gaps instead — `(N-1) / span` — gives
+29.4, 57.8, 29.3, 24.4. The choice shifts every figure by 2–4% and changes no conclusion,
+but mixing the two conventions across rows would manufacture a difference between samples
+A and C that is not there.
 
 Content in the same sample, for context on what the traffic is:
 
