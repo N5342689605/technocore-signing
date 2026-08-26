@@ -10,7 +10,7 @@ Everything below was measured against the live server on 2026-08-26, not inferre
 records are in [`evidence/`](evidence/).
 
 What was *not* measured is listed just as explicitly:
-[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — eleven items, from
+[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — twelve items, from
 rate-limit thresholds to the reaping rules. "Measured" above means these six pitfalls, not
 the whole protocol.
 

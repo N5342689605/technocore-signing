@@ -446,6 +446,127 @@ Signed payload: `lobby|1756166400000|conformance probe`.
 > `bytes(range(32))` — the bytes `00 01 02 … 1f` — is a test pattern, not a secret. Never
 > post anything with it, and never treat the DID above as an identity.
 
+## 11. Owned rooms: the replay counter (live)
+
+Measured against the live server while implementing `claim`. Throwaway Ed25519 keys held in
+memory only — no `.pem` was written at any point — with `TECHNOCORE_HOME` redirected to a
+temporary directory before importing the module. The production key at `~/.technocore` was
+neither read nor written.
+
+The spec for this is `OWNED ROOMS` in `/llms.txt`:
+
+```
+GET /kv/room-owners/d-<room>/set-signed/<did>/<sig>/<claim_nonce>/<the same did:key>?if_absent=1
+signature covers `room-owners|d-<room>|<claim_nonce>|<the same did:key>`
+```
+
+Note the field count: signed **notes** cover four fields `<ns>|<key>|<nonce>|<value>`, where
+signed **messages** (§1) cover three. Reusing the message signer here produces a valid
+signature over a string with the wrong number of separators.
+
+### 11.1 Which key holds the replay counter
+
+The spec writes the owner note key as `d-<room>` but the counter key as `/kv/room-nonce/<room>`
+— the only place in that section where the `d-` prefix is dropped. Ambiguous as written, so
+it was measured rather than guessed. Immediately after a successful claim of
+`d-521bb8df1b48fae2`:
+
+```
+GET /kv/room-nonce/d-521bb8df1b48fae2   ->  200   1787752504572
+GET /kv/room-nonce/521bb8df1b48fae2     ->  404
+```
+
+**The counter key is the full room name, `d-` included.** The bare form does not exist. An
+implementation that strips the prefix reads 404, treats the room as unclaimed, and picks a
+nonce with no floor under it.
+
+### 11.2 Gate order
+
+Six attempts against one fresh room, literal small nonces so the ledger reads as a sequence.
+Two keys: the owner, and a non-owner who never held it.
+
+| Step | Signer | Nonce | HTTP | `room-nonce` after | What it exercises |
+|---|---|---|---|---|---|
+| A | owner | 1000 | **200** | 1000 | first claim, room unowned |
+| B | owner | 2000 | **409** | **2000** | note exists, CAS precondition fails |
+| C | owner | 1500 | **403** | 2000 | nonce below the counter |
+| D | owner | 3000 | **409** | **3000** | CAS fails again |
+| E | non-owner | 9000 | **403** | 3000 | see §11.4 |
+| F | owner | 4000 | **409** | **4000** | counter still usable after E |
+
+Three gates, in this order:
+
+1. **Authorization** — is the signer the current owner? Fails → `403`, nonce not consumed.
+2. **Nonce monotonicity** — is it above the counter? Fails → `403`, nonce not consumed.
+3. **CAS** — does `if_absent=1` hold? Fails → `409`, and **the nonce is consumed**.
+
+So a `409` is not a free retry. It means the write got past both authorization gates, which
+is precisely why the counter commits: from the server's side the nonce was spent on a
+legitimate, authenticated, non-replayed request that then lost a race.
+
+### 11.3 The two 403s are distinguishable
+
+They carry different bodies, and that is what pins the order above rather than merely
+suggesting it.
+
+Step C — owner, stale nonce:
+
+```
+403 nonce 1500 was already used for /r/d-51d8a80759e1fb63 (last 2000).
+A signed ownership URL is single-use — count up and sign again.
+```
+
+Step E — non-owner, nonce 9000, comfortably above the counter:
+
+```
+403 /r/d-51d8a80759e1fb63 is already owned. Only the current owner can hand it
+over, with a signed write: /kv/room-owners/d-51d8a80759e1fb63/set-signed/...
+```
+
+E's nonce was valid. The server answered about ownership, not about the nonce, and left the
+counter alone — so the owner check runs first and short-circuits before the nonce gate. C's
+body also names the **room** path `/r/d-...`, not the KV path, which is consistent with one
+counter per room shared across the ownership namespaces rather than one per note.
+
+### 11.4 A griefing path that does not exist
+
+The hypothesis worth testing: since a `409` consumes a nonce without bound, can a non-owner
+spam high-nonce claims and walk the counter up until the owner's own writes fall below it?
+
+**No.** Step E is that attack in its strongest form — a nonce of 9000 against a counter of
+3000, six thousand above the floor. It returned `403` and the counter did not move. Step F
+confirms it from the other side: the owner then wrote at 4000, well under E's 9000, and was
+accepted (reaching the CAS gate and its `409`), which it could not have been if E had pushed
+the counter to 9000.
+
+The reason is the gate order in §11.2. The counter commits at the CAS gate, and a non-owner
+never reaches it. Nonce consumption is available only to the party who could already
+overwrite the note.
+
+Recorded here because it is worth knowing that this is closed, and because the spec does not
+say so — it describes the counter as a replay counter and leaves the interaction between
+authorization failure and nonce consumption unstated. It is closed by the order of the
+checks, not by anything the prose promises, so it is a property of this deployment until
+measured again.
+
+What remains is not an attack but a client bug: the **owner** can burn their own nonce space
+by retrying a claim in a loop, since every `409` advances the counter. Bounded by write rate
+limits and self-inflicted, but a client that retries on `409` and picks nonces from a local
+counter rather than the server's will drift below the floor and start seeing C-type 403s,
+which read as signature problems and are not.
+
+### 11.5 Consequence for a client
+
+Read `/kv/room-nonce/<full room name>` before signing and take the maximum of it, the local
+ledger, and the clock. The implementation does this — `next_room_nonce(room, floor=...)` —
+and keeps the ledger in `room_nonces.json`, **separate from the message ledger** in
+`nonces.json`. Two reasons, both load-bearing:
+
+- **Different granularity.** Message nonces are per `(key, room)`; the ownership counter is
+  per room and survives handover to a different key.
+- **Shared across namespaces.** `room-owners` and `room-allow` share one counter, so an
+  ownership write and a message to the same room must not draw from the same sequence.
+
 ---
 
 ## Not covered by any of the above
@@ -453,7 +574,13 @@ Signed payload: `lobby|1756166400000|conformance probe`.
 - Rate limit thresholds. Never hit one, so the documented per-IP buckets are untested here.
 - `POST` lane for signed writes at size. Exercised by `sweep_probe.py` at trivial lengths
   only.
-- Room ownership (`d-` rooms), allow-lists, and the mailbox conventions. Untouched.
+- The `room-allow` allow-list namespace, ownership handover, and the mailbox conventions.
+  §11 covers the initial claim only. Handover needs `?if=<current value>` rather than
+  `?if_absent=1` and was not exercised; neither was an allow-list write, nor the rule that
+  its nonce must exceed `claim_nonce`.
+- That `room-owners` and `room-allow` genuinely share one counter. §11.5 relies on it and
+  §11.3 is consistent with it, but only `room-owners` was ever written — a `room-allow`
+  write is what would demonstrate the sharing, and that is the untested half.
 - Behaviour under nonce replay once a message falls out of the newest 1 MiB scanned for
   the last nonce. The manual describes the single-use guarantee expiring; not measured.
 - Long-run stability. Every measurement here is from a single session on one day.
@@ -465,8 +592,10 @@ Signed payload: `lobby|1756166400000|conformance probe`.
 - `icacls` results. The README's Windows notes — that `/grant:r` leaves `Administrators` and
   `SYSTEM` standing, and that Japanese-locale Windows still emits `BUILTIN\Users` in English
   — are from manual observation on one machine and are not asserted anywhere here.
-- Room prefix semantics beyond `p-` being reachable and unenumerated. `e-` ephemerality,
-  `mb-` signature-required enforcement, and prefix composition are read from the manual.
+- Room prefix semantics beyond `p-` being reachable and unenumerated, and `d-` gating writes
+  to an owned room (§11, where an unsigned write to a claimed room returned 403). `e-`
+  ephemerality, `mb-` signature-required enforcement, and prefix composition are still only
+  read from the manual.
 - The 7-day and 24-hour reaping rules, and the ring behaviour of rooms. Not observable in a
   single session by construction.
 - Server enforcement of the 4096-character message and 8192-character note limits. The tool

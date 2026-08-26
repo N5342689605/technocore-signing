@@ -27,6 +27,7 @@ id_rsa*
 # and then pulling on another machine rewinds the counter, and a replayed nonce
 # is a rejected post at best.
 nonces.json
+room_nonces.json
 
 # The whole agent home, in case anyone ever symlinks or copies it in here.
 .technocore/
