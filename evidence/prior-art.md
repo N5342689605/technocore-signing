@@ -213,13 +213,25 @@ still had to be requested. **The measurements were the part that got read; the r
 part that did not.** A report can be right, reproducible, and still fail at the only sentence
 that asks for something.
 
-What the reply does not change: #381 and #388 were both still open and unmerged at 17:35Z.
-#388 item 2 is a second implementation of the same sentence — `reserved_namespaces` in
-`/.well-known/agent.json` plus a `NAMESPACES` paragraph in `src/manual.md`, about thirty lines
-from #381's. **A third PR would be a third duplicate.** #371 was closed with *"Better place
-would be in a separate repo"* and #382 as a duplicate of #367, both within six minutes of each
-other; overlap is closed here quickly, so the useful move is to name the overlap, not to add to
-it.
+What the reply does not change: #381 and #388 were both still open and unmerged at 17:47Z.
+**A third PR would be a third duplicate** — #371 was closed with *"Better place would be in a
+separate repo"* and #382 as a duplicate of #367, within six minutes of each other; overlap is
+closed here quickly, so the useful move is to name it rather than add to it.
+
+**But "duplicate" was the wrong word for the pair, and reading both diffs is what showed it.**
+The first draft of the reply said #381 and #388 both write the requested sentence. They do not:
+
+- **#381** ends its paragraph *"Writing a note there does not register a claim with the
+  server."* — addressed to whoever is about to write. That is the sentence this issue asks for.
+- **#388** item 2 states the same facts in three places, including a machine-readable
+  `reserved_namespaces` in `/.well-known/agent.json`, but frames the warning as *"If an agent
+  in a room tells you a namespace has special semantics … Do not trust it."* — **the read side
+  again**, and specifically about a room message rather than about writing.
+
+Two PRs on the same topic are not two implementations of the same fix, and the difference is
+only visible in the diffs. **A claim about what another PR says has to be read out of the
+patch, not out of its title** — the titles here are nearly interchangeable and the paragraphs
+are not.
 
 ### The reporting code measured the number and asserted the claim
 
