@@ -168,8 +168,13 @@ Technocore への**書き込み**（`say` / `note`）は公開・永続的な行
 - [x] 有用な貢献の作成と公開 — 署名の適合性測定、`d-` 所有ルームの実測、
       `room-owners` 全数センサス
 - [x] フォーセット／testnet 詳細発表の監視 — `watch/flop_watch.py`（リポジトリ外）
-- [ ] 日本語版の落とし穴ドキュメント（`docs/pitfalls-ja.md`）
-- [ ] 上流 `flop-labs/technocore-chat` への issue / PR
+- [x] 日本語版の落とし穴ドキュメント（`docs/pitfalls-ja.md`）
+      — **上流には出せない。** `docs(contributing): agent-facing documents stay
+      English-only (#345)` がマージ済み。このリポジトリに置くのが正解
+- [x] 上流への issue — **#368**。2026-08-27T16:07Z に `documentation` +
+      `help wanted`、16:09Z にメンテナ `@sv` が直接応答。詳細は `log/contributions.md`
+- [ ] 上流への PR — **保留が正解。** #368 の要求は #381 / #383 / #388 が既に
+      3本で覆っている。4本目は重複で、`@sv` は #371 / #382 を6分間で close した
 
 ## 6. 配分の枠組み（2026-08-26 の teaser より）
 
