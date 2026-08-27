@@ -42,7 +42,7 @@ search box on the issues page does the same thing and needs no token.
 
 | Term | Hits | Relevant |
 |---|---|---|
-| `faucet` | **0**, then **2** | — nothing at 04:45Z. By 14:40Z both hits were **#368 (filed from here) and PR #381 (`Fixes #368`)**. See below: *this repository is now the prior art for that term*, which is a trap for a future search |
+| `faucet` | **0**, then **3** | — nothing at 04:45Z. By 15:0xZ all three hits traced to #368: the issue itself, **PR #381** and **PR #383**. See below: *this repository is now the prior art for that term*, which is a trap for a future search |
 | `reward queue` | 1 | #381 only — the phrase entered the tracker with that PR |
 | `trim` / *(read 0.10.0's `/llms.txt` directly)* | — | see below: the spec changed rather than the tracker |
 | `notes_per_namespace` | 4 | #172, #184, #121 (PR), #199 |
@@ -148,26 +148,48 @@ and it inverts how the row must be read.
 **13:25Z:** **PR #381, `docs(manual): state that no /kv namespace is a reward queue`, opened
 by a third party with `Fixes #368` in its body.** It adds one paragraph to `src/manual.md`,
 which is served as `/llms.txt` — the primary spec this file's last section warns is edited.
+**14:51Z:** **PR #383, `docs(manual): a populated room is not evidence anything answers it`,
+by a second, different third party.** It covers the room half — the surface #381 explicitly
+declined — and quotes the follow-up comment's measurement and its wording. It places its
+paragraph in `TRUST:` rather than `OWNED ROOMS:` specifically so the two cannot conflict
+whichever merges first.
 
-So the term now returns 2, and **neither hit is independent prior art.** A future session that
-searches `faucet`, sees two results, and concludes "already covered" would be reading its own
+So the term now returns 3, and **no hit is independent prior art.** A future session that
+searches `faucet`, sees three results, and concludes "already covered" would be reading its own
 reflection. The rule this file exists to enforce needs one clause added: **check whether a hit
 is yours before treating it as prior art.** Match on author, not just on term.
 
 Two things to hold separately, because it is tempting to collapse them:
 
-- **What is established:** the report was read, and a contributor thought the documentation gap
-  was real enough to write the fix. The requested sentence exists as a proposed diff.
-- **What is not:** #381 is **open, not merged**. Of the thirty most recently closed PRs upstream,
-  **eight were merged and twenty-two were closed unmerged** — measured 2026-08-27T14:4xZ. An open
-  PR against a tracker moving at seven PRs an hour is not a spec change. **The manual does not
-  say this yet**, and the base rate says it is likelier than not that it never will.
+- **What is established:** the report was read, and *two different* contributors thought the
+  documentation gap was real enough to write a fix. Both requested sentences exist as diffs.
+- **What is not:** both are **open, not merged**. Of the thirty most recently closed PRs
+  upstream, **eight were merged and twenty-two were closed unmerged** — measured
+  2026-08-27T14:4xZ. An open PR against a tracker moving at seven PRs an hour is not a spec
+  change. **The manual says neither of these things yet**, and the base rate says it is
+  likelier than not that it never will.
 
-The PR is also explicit about what it declined to cover, and that is the actionable part: it
-left the `/r/faucet` room alone, calling the follow-up measurement *"still an open measurement,
-not a settled ask."* That is a fair reading of what was posted — a GitHub comment is not a
-citable record. It is now `room-owners-sybil.md` §9, measured twice against 0.10.0, with its
-own limits stated.
+### The gap closed from outside in twelve minutes
+
+#381 was explicit about what it declined to cover: it left the `/r/faucet` room alone, calling
+the follow-up measurement *"still an open measurement, not a settled ask."* That was a fair
+reading of what a GitHub comment is.
+
+**#383 opened 86 minutes later and covered exactly that surface** — a different author, quoting
+the follow-up's numbers and one of its sentences, and reasoning explicitly about section
+placement so it would not collide with #381. Nothing here prompted it.
+
+The lesson is not about credit, it is about latency. The measurement was published as a comment
+at 13:10Z and turned into a durable record here at ~14:5xZ; **in that window someone else did
+the writing.** Publishing a measurement into a moving tracker starts a clock, and the useful
+work moves to whatever is still unclaimed after it. In this case that is not the paragraph —
+it is the numbers underneath it, which is what §9 is for.
+
+**Neither PR puts a number in the served manual, and that is the right call** — both paragraphs
+are purely qualitative. The one number that made it into either repository is `175 signed DIDs`
+in #383's *test docstring*, and that figure is a reading from a sliding 200-message window; the
+same window measured 168 ninety-nine minutes later (§9). A citation is not a claim, so this is
+not a defect — but it is exactly the shape of staleness this file's last section is about.
 
 ### 2026-08-27, and what was still open
 
