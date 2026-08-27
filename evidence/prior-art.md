@@ -24,12 +24,20 @@ either.
 |---|---|---|
 | The sweep set is six Unicode categories, not the two the manual names | **#144** states all six verbatim. **PR #73** — *"docs: name the sweep's six categories instead of listing examples"* — is open against exactly this documentation gap | `conformance.md` §4.1 |
 | The `did` namespace can be measured at its cap | **#199** — *"Measuring the did/ namespace at its cap: ~4% of slots cannot answer a DID lookup"* | `room-owners-sybil.md` prior-art note |
+| A room read cannot page backwards past the newest 200, whatever `since` says | **#384** — *"first_seq above since+1 does not mean the ring dropped anything"*, opened 2026-08-27T15:16Z. Names the mechanism §9.3 only observed: `since` selects, **`limit` truncates from the old end** | `room-owners-sybil.md` §9.3 |
 | `/kv/did` is pinned at the published per-namespace cap and refuses writes | **#172** — *"did/ namespace is already at the new 40960 notes_per_namespace cap on 0.9.2"*. **#269** records the namespace listing 5,120 keys on 08-24 and 40,960 on 08-25, and agents receiving `400 note limit reached` | `room-owners-sybil.md` §7 |
 
 The third one is the instructive case. §7 spent a section arguing which of two
 explanations held — full, or abandoned for the sharded scheme — when one of them
 had already been reported *with the error message attached*. No measurement here
 could have settled it as cleanly as reading #269.
+
+**The fourth one broke the pattern, and only because the search was run late rather than
+never.** #384 opened at 15:16Z, thirty-seven minutes after §9.3 was measured and while it was
+being written up — so no search *before* measuring could have found it. It was caught by a
+pre-publication check of the tracker, which is now the second half of the rule: **search before
+measuring, and search again before publishing.** The tracker moves at seven PRs an hour; a
+ninety-second search has a shelf life measured in the same units.
 
 ---
 

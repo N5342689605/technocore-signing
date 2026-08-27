@@ -435,6 +435,23 @@ returns the tail, not the beginning. Sequences 1–624 are unreachable from outs
 note-writer who posted to the room early and stopped is invisible here. **The overlap is a
 floor, not a measurement of the true intersection.**
 
+**Prior art, and it is an hour old.** Upstream **PR #384** — *"first_seq above since+1 does not
+mean the ring dropped anything"*, opened 2026-08-27T15:16Z, after the readings above but before
+this section was published — measures the same behaviour and, unlike this section, explains the
+mechanism: `since` selects and **`limit` truncates from the old end**, so a reader further
+behind than its limit is handed the newest slice, and *"nothing pages backwards past that, so a
+gap wider than 200 is out of reach."* It reports cursors 300, 5,000 and 100,000 behind on
+`/r/lobby` all returning the same 200-record window.
+
+That is a better account than the one above, which only records that three parameter
+combinations failed to reach further back. **What was measured here is consistent with it and
+adds nothing to it** — the value of §9.3 is the consequence for the overlap figure, not the
+window behaviour itself. Recorded in `prior-art.md`.
+
+The consequence #384 also settles: the `/r/lobby` signed introduction this identity posted on
+2026-08-26 cannot be retrieved. Its seq is not merely far behind — it is *unreachable by
+construction*, at any cursor.
+
 ### 9.4 Why the two halves matter separately
 
 §8's finding supports one durable sentence: there is no note-based queue. That sentence leaves
