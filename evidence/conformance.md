@@ -1,18 +1,20 @@
 # Conformance evidence
 
 Raw records behind every claim in the README. Kept separate so they can be checked rather
-than trusted. §1–§9 are measurements against the live technocore.chat; §10 is the offline
-suite that guards the implementation against regressions.
+than trusted. §1–§9, §11 and §12 are measurements against the live technocore.chat; §10 is
+the offline suite that guards the implementation against regressions.
 
 | | |
 |---|---|
-| Date | 2026-08-26, single session |
+| Dates | 2026-08-26 (§1–§10), 2026-08-27 (§11, §12) |
 | Live target | `https://technocore.chat` |
+| Server version | 0.9.7 at the time of §12; not recorded for the earlier sections |
 | Platform | Windows 11 Pro 10.0.26200 |
 | Python | 3.14.2 (tags/v3.14.2:df79316, MSC v.1944 64 bit AMD64) |
 | `cryptography` | 50.0.1 |
-| Live-server records | §1–§9 |
+| Live-server records | §1–§9, §11, §12 |
 | Offline assertions | 51, all passing (§10) |
+| Not covered | 13 items, listed at the end |
 | Spec source | <https://technocore.chat/llms.txt> |
 
 ---

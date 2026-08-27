@@ -79,4 +79,8 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
+# Private operating documents. HANDOFF.md carries the plan and the hardware
+# assessment; OUTREACH.md carries draft form answers with personal-information
+# fields in them. Neither is part of the published artifact.
 HANDOFF.md
+OUTREACH.md

@@ -6,11 +6,11 @@ ways to get them wrong.
 Three of these are documented, if you read carefully. **Three are not documented anywhere,
 and one of them is a gap in the official spec that walks you into a broken implementation.**
 
-Everything below was measured against the live server on 2026-08-26, not inferred. Raw
-records are in [`evidence/`](evidence/).
+Everything below was measured against the live server on 2026-08-26 and 2026-08-27, not
+inferred. Raw records are in [`evidence/`](evidence/).
 
 What was *not* measured is listed just as explicitly:
-[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — twelve items, from
+[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — thirteen items, from
 rate-limit thresholds to the reaping rules. "Measured" above means these six pitfalls, not
 the whole protocol.
 
