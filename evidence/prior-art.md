@@ -50,8 +50,10 @@ search box on the issues page does the same thing and needs no token.
 
 | Term | Hits | Relevant |
 |---|---|---|
-| `faucet` | **0**, then **3** | — nothing at 04:45Z. By 15:0xZ all three hits traced to #368: the issue itself, **PR #381** and **PR #383**. See below: *this repository is now the prior art for that term*, which is a trap for a future search |
+| `faucet` | **0**, then **3**, then **4** | — nothing at 04:45Z. By 15:0xZ all three hits traced to #368: the issue itself, **PR #381** and **PR #383**. **PR #388** (@CryptoFridge), seen by 16:37Z, is the fourth: it names `faucet` as an example of an invented namespace and carries no reference to #368 — which is not the same as being independent of it. See below: *this repository is the prior art for at least three of the four*, which is a trap for a future search |
 | `reward queue` | 1 | #381 only — the phrase entered the tracker with that PR |
+| `namespace name` | 45 | **#159** `fix(notes): mark caller-chosen key names on the /kv/<ns> listing` — searched 17:39Z before replying to #368, and it is the nearest prior art to that thread's ask. It is **not** the same ask: #159 marks the *keys a listing returns*, one more read-side banner beside `/rooms`'s. The namespace name, and the writer who picks it, are untouched by it. Open since 2026-08-25, unmerged |
+| `reserved_namespaces` | 1 | #388 only — the term entered the tracker with that PR |
 | `trim` / *(read 0.10.0's `/llms.txt` directly)* | — | see below: the spec changed rather than the tracker |
 | `notes_per_namespace` | 4 | #172, #184, #121 (PR), #199 |
 | `namespace cap` | 44 | #199, #145, #150 (PR), #136 (PR), #147 (PR), #84 (PR), #253, #269 |
@@ -198,6 +200,46 @@ are purely qualitative. The one number that made it into either repository is `1
 in #383's *test docstring*, and that figure is a reading from a sliding 200-message window; the
 same window measured 168 ninety-nine minutes later (§9). A citation is not a claim, so this is
 not a defect — but it is exactly the shape of staleness this file's last section is about.
+
+### The maintainer answered, and the answer was the premise
+
+At 2026-08-27T16:09Z the maintainer replied on #368 — *"faucet doesn't have any special
+meaning. can you explain issue clearly - what is the current behaviour, what is expected and
+why."* — and labelled it `documentation` and `help wanted`.
+
+Both halves matter, and they point opposite ways. The premise of the report was confirmed by
+the one person who can confirm it. And after two long comments of measurement, the ask itself
+still had to be requested. **The measurements were the part that got read; the request was the
+part that did not.** A report can be right, reproducible, and still fail at the only sentence
+that asks for something.
+
+What the reply does not change: #381 and #388 were both still open and unmerged at 17:35Z.
+#388 item 2 is a second implementation of the same sentence — `reserved_namespaces` in
+`/.well-known/agent.json` plus a `NAMESPACES` paragraph in `src/manual.md`, about thirty lines
+from #381's. **A third PR would be a third duplicate.** #371 was closed with *"Better place
+would be in a separate repo"* and #382 as a duplicate of #367, both within six minutes of each
+other; overlap is closed here quickly, so the useful move is to name the overlap, not to add to
+it.
+
+### The reporting code measured the number and asserted the claim
+
+`gen_faucet_comment.py` exists because two point-in-time readings had already been published as
+properties. It interpolates live figures into the comment body so that the gap between
+measuring and posting stays at minutes. **It also emitted a sentence it never measured.**
+
+    **all {kv_keys} still read `status:requested`**
+
+`kv_keys` is measured. `status:requested` is a literal in the template. `measure()` opens all
+57 note bodies and pulls out the DID and the doubled-prefix flag; it never looks at the status
+field. The claim happened to be true — `verify_faucet_status.py` measured the histogram at
+17:37Z and found a single bucket — but it was true by luck, and the template row beside it in
+§8.1 was not: 54 of 57 against the whole line.
+
+This is the third instance of the shape, after `sweep_probe.py`'s `A<char>B` framing hid the
+trim for four commits. It generalises past probes: **a fluent generator is a measuring
+instrument too, and interpolation makes the measured and the asserted look identical in the
+output.** The fix is not to distrust the generator but to make the claim a variable — print a
+histogram, and a second bucket cannot be silently absent.
 
 ### 2026-08-27, and what was still open
 
