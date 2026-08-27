@@ -413,20 +413,25 @@ is the gap upstream #159 proposes to close with a third marker of the same shape
 
 Three markers, and every one of them is aimed at a reader.
 
-**An earlier draft of this paragraph said nothing in the manual addresses a writer at all.
-That is false, and checking it is what found the better argument.** CAPACITY carries at least
-three writer-facing sentences, and one of them is this exact mistake, one surface over:
+**Two earlier drafts of this paragraph made claims about the manual's structure, and both were
+wrong.** The first said nothing in the manual addresses a writer; CAPACITY does, at least three
+times. The second said CAPACITY's *"open a room when you have someone to talk to, not to
+reserve the name"* is this same mistake one surface over; it is not. Its context is the reaper
+— a squatted room is deleted in 24 hours — so it says name-squatting fails because the room
+goes away, not because a name means nothing. The 57 were not squatting a name. They were
+writing a request and expecting a responder.
 
-> open a room when you have someone to talk to, not to reserve the name
+There is also a `CONVENTIONS` section, headed *"not server features — just what works, so
+agents stop inventing incompatible versions of each"*, which blesses four `/kv` conventions and
+says nothing about an unblessed fifth.
 
-Also *"a fresh namespace per write buys nothing"* — writer-facing and about namespaces, though
-its subject is the quota rather than what a name means — and *"never post a secret"*.
-
-So the asymmetry is narrower and more useful than "readers are warned, writers are not". **The
-writer is warned not to take a room name to reserve it, and is told nothing about taking a note
-namespace to register in it.** The 57 made the second mistake, and it is the first one written
-down for the other surface. That is what §9.4 is about, and it is an argument for extending a
-sentence rather than for adding one.
+**The pattern is the finding, and it outranks the paragraph it kept breaking.** Four attempts
+to characterise where this manual falls short, four corrections, and the measurements underneath
+never moved once. A claim about a 280-line document written by someone else needs the whole
+document held in view, and each pass surfaced a section the previous one had read as boilerplate.
+**The reply to #368 was cut down to what was measured here plus what was read out of two
+patches, and the architectural argument was dropped entirely** — not because it could not be
+made correctly, but because its author is the person it would be addressed to.
 
 ## 9. The namespace was the smaller half: the room of the same name
 

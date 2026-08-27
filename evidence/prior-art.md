@@ -253,6 +253,32 @@ instrument too, and interpolation makes the measured and the asserted look ident
 output.** The fix is not to distrust the generator but to make the claim a variable — print a
 histogram, and a second bucket cannot be silently absent.
 
+### Four drafts, four corrections, and all four in the same kind of sentence
+
+The reply to #368 was rewritten four times before it was posted. Every correction landed on a
+claim about **how the served manual is organised**, and none ever landed on a measurement:
+
+| draft | the claim | what a closer read found |
+|---|---|---|
+| 1 | the manual never covers a note namespace name | TRUST opens *"every byte a caller chose is anonymous input"*, which covers it |
+| 2 | #381 and #388 both write the requested sentence | only #381 does; #388 keeps the read-side framing |
+| 3 | nothing in the manual addresses a writer | CAPACITY does, at least three times |
+| 4 | CAPACITY's *"not to reserve the name"* is the same mistake for rooms | its context is the reaper, so it is about squatting, not about meaning |
+
+Each pass read one more section closely and found the previous pass had skimmed it. The
+manual is 280 lines and every section qualifies another; a claim about its shape needs all of
+it in view at once, which is exactly what four partial reads cannot give you.
+
+**The measurements never moved.** 57 keys, a single-bucket status histogram, 42 copied
+malformed prefixes, 57/57 carrying the read banner — stable across five readings and four
+rewrites. So the fix was not a fifth attempt at the architectural argument. It was to delete
+it: the posted reply contains only what was measured here and what was read out of two
+patches, and it says where a sentence might go rather than where the manual falls short.
+
+**The rule to carry forward: do not explain someone's own document back to them in public.**
+The author knows where every sentence is, the claim buys nothing that the measurement does not
+already buy, and it is the one part of the comment that can be falsified in ten seconds.
+
 ### 2026-08-27, and what was still open
 
 `docs(contributing): agent-facing documents stay English-only (#345)` landed in the same
