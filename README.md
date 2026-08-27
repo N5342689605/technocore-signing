@@ -72,43 +72,57 @@ payload = f"{room}|{nonce}|{raw}".encode("utf-8")     # 403
 ```
 
 **Here is the part that matters.** The manual enumerates C0/C1 controls, format
-characters, zero-width joiners and bidi overrides. Every one of those is Unicode category
-`Cc` or `Cf`. `Zl` and `Zp` are never mentioned.
+characters, zero-width joiners and bidi overrides — Unicode categories `Cc` and `Cf`. The
+server sweeps **six** categories. Four of them are never named:
 
-They are swept anyway. Measured, 18 probes:
-
-| Character | Category | Server | In the spec's list? |
-|---|---|---|---|
-| `U+0009` TAB | Cc | → space | yes |
-| `U+000A` LINE FEED | Cc | → space | yes |
-| `U+000D` CARRIAGE RETURN | Cc | → space | yes |
-| `U+001B` ESCAPE | Cc | → space | yes |
-| `U+007F` DELETE | Cc | → space | yes |
-| `U+0085` NEXT LINE | Cc | → space | yes |
-| `U+00AD` SOFT HYPHEN | Cf | → space | yes |
-| `U+200B` ZERO WIDTH SPACE | Cf | → space | yes |
-| `U+200D` ZWJ | Cf | → space | yes |
-| `U+202E` RLO | Cf | → space | yes |
-| `U+FEFF` BOM | Cf | → space | yes |
-| **`U+2028` LINE SEPARATOR** | **Zl** | **→ space** | **no** |
-| **`U+2029` PARAGRAPH SEPARATOR** | **Zp** | **→ space** | **no** |
-| `U+00A0` NBSP | Zs | unchanged | — |
-| `U+3000` IDEOGRAPHIC SPACE | Zs | unchanged | — |
-| `U+2003` EM SPACE | Zs | unchanged | — |
-| `U+FE0F` VARIATION SELECTOR-16 | Mn | unchanged | — |
-| `U+0301` COMBINING ACUTE | Mn | unchanged | — |
+| Category | Named in the manual? | Example probed |
+|---|---|---|
+| `Cc` control | yes | `U+0009` TAB, `U+000A` LF, `U+007F` DEL |
+| `Cf` format | yes | `U+200D` ZWJ, `U+202E` RLO, `U+FEFF` BOM |
+| **`Cs` surrogate** | **no** | not probeable — see below |
+| **`Co` private use** | **no** | `U+E000`, `U+F8FF`, `U+F0000`, `U+10FFFD` |
+| **`Zl` line separator** | **no** | `U+2028` |
+| **`Zp` paragraph separator** | **no** | `U+2029` |
 
 ```
-sweep set = Cc ∪ Cf ∪ Zl ∪ Zp
+sweep set = Cc ∪ Cf ∪ Cs ∪ Co ∪ Zl ∪ Zp
 ```
+
+25 probes, all agreeing with that set: 20 swept, and 5 left standing (`U+00A0` NBSP,
+`U+3000` IDEOGRAPHIC SPACE, `U+2003` EM SPACE — all `Zs` — plus `U+FE0F` and `U+0301`,
+both `Mn`). Run [`sweep_probe.py`](sweep_probe.py) to reproduce. Full table in
+[`evidence/conformance.md`](evidence/conformance.md) §4.
+
+`Cs` is the one entry not measured: lone surrogates are not valid UTF-8, so they never
+survive the request. It is swept per the server's own declaration, not per a probe here.
 
 **Implement the documented list literally and your signatures break on any text containing
-a line separator.** The `403` will not say why.
+a line separator or a private-use character.** The `403` will not say why.
 
-The gap runs the other way too. The manual opens by calling these invisible characters,
-but NBSP, EM SPACE and the ideographic space are all left standing, and combining marks
-and variation selectors pass through untouched. The prose generalises too far and
-enumerates too little.
+The gap runs the other way too. The manual opens by calling these characters invisible, but
+NBSP, EM SPACE and the ideographic space are all left standing, and combining marks and
+variation selectors pass through untouched. The prose generalises too far and enumerates too
+little.
+
+### How this section was wrong, twice
+
+Worth stating plainly, because it is the pitfall demonstrating itself.
+
+**First error.** The original version of this section claimed the set was
+`Cc ∪ Cf ∪ Zl ∪ Zp` — four categories, from 18 probes. `Zl`/`Zp` were an inference from the
+name "single-line sweep", and the measurement confirmed the inference. But the probe set
+never included a private-use character, so `Co` could not be found, and the published set was
+a strict *subset* of the real one. **This implementation shipped with that same 4-category
+sweep** — meaning it under-swept, which is the failing direction described below, in a tool
+whose entire purpose is to get this right. Reading `INVISIBLE_CATEGORIES` in the server's
+`src/store.py` is what found it; four `Co` probes then confirmed it against the live server.
+
+**Second error.** The claim was never novel. `flop-labs/technocore-chat` issue #144 already
+states the six-category set verbatim, and PR #73 — *"docs: name the sweep's six categories
+instead of listing examples"* — is open against exactly this documentation gap. This
+repository did the measurement independently and arrived somewhere the project had already
+been. That is worth something as an external check on the implementation; it is not a
+discovery, and an earlier version of this README implied otherwise.
 
 Over-sweeping is safe; under-sweeping is not. The server verifies against *its* swept form
 of what you sent, so your text needs to be a fixed point of the server's sweep. Sweeping a

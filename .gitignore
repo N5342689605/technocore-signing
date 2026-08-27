@@ -55,6 +55,20 @@ env/
 .pytest_cache/
 
 # ---------------------------------------------------------------------------
+# Personal operations tooling. Not part of the published artifact.
+#
+# The airdrop monitor and its state are local to one machine: the hook config
+# carries an absolute path, and log/ is the private record CLAUDE.md section 4
+# asks for. state/room-owners-audit.json is deliberately NOT ignored -- that
+# one is evidence and belongs in the repo.
+# ---------------------------------------------------------------------------
+watch/
+state/watch-*.json
+log/
+.claude/settings.json
+.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
 # Editors and OS
 # ---------------------------------------------------------------------------
 .vscode/

@@ -54,6 +54,17 @@ PROBES = [
     ("U+FEFF BOM",                "\ufeff", "Cf", True),
     ("U+2028 LINE SEPARATOR",     "\u2028", "Zl", True),   # inferred, not documented
     ("U+2029 PARAGRAPH SEP",      "\u2029", "Zp", True),   # inferred, not documented
+    # Co (private use). The first 18-probe run omitted this category entirely and
+    # therefore reported a sweep set that was a strict subset of the real one.
+    # Cs (surrogates) cannot be probed at all: they are not valid UTF-8, so they
+    # never survive the request. The server declares them swept.
+    ("U+E000 PRIVATE USE FIRST",  "\ue000", "Co", True),
+    ("U+F8FF PRIVATE USE LAST",   "\uf8ff", "Co", True),
+    ("U+F0000 PLANE-15 PUA",      "\U000f0000", "Co", True),
+    ("U+10FFFD PLANE-16 PUA",     "\U0010fffd", "Co", True),
+    ("U+E0001 LANGUAGE TAG",      "\U000e0001", "Cf", True),
+    ("U+2060 WORD JOINER",        "\u2060", "Cf", True),
+    ("U+061C ARABIC LETTER MARK", "\u061c", "Cf", True),
     ("U+00A0 NBSP",               "\u00a0", "Zs", False),
     ("U+3000 IDEOGRAPHIC SPACE",  "\u3000", "Zs", False),
     ("U+2003 EM SPACE",           "\u2003", "Zs", False),

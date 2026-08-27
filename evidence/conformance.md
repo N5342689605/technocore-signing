@@ -73,7 +73,8 @@ payload**, which makes the sweep externally observable (see §4).
 ## 4. Server sweep, measured
 
 Method: for each probe character `c`, POST `A<c>B` with a garbage signature and read the
-post-sweep text out of the 403 body. 18 probes, `sweep_probe.py`.
+post-sweep text out of the 403 body. 25 probes, `sweep_probe.py`. No key and no valid
+signature required; every request is a 403 and nothing is stored.
 
 | Character | Category | Server | Enumerated in the manual? |
 |---|---|---|---|
@@ -88,8 +89,15 @@ post-sweep text out of the 403 body. 18 probes, `sweep_probe.py`.
 | `U+200D` ZWJ | Cf | → space | yes |
 | `U+202E` RLO | Cf | → space | yes |
 | `U+FEFF` BOM | Cf | → space | yes |
+| `U+2060` WORD JOINER | Cf | → space | yes |
+| `U+061C` ARABIC LETTER MARK | Cf | → space | yes |
+| `U+E0001` LANGUAGE TAG | Cf | → space | yes |
 | **`U+2028` LINE SEPARATOR** | **Zl** | **→ space** | **no** |
 | **`U+2029` PARAGRAPH SEPARATOR** | **Zp** | **→ space** | **no** |
+| **`U+E000` PRIVATE USE FIRST** | **Co** | **→ space** | **no** |
+| **`U+F8FF` PRIVATE USE LAST** | **Co** | **→ space** | **no** |
+| **`U+F0000` PLANE-15 PUA** | **Co** | **→ space** | **no** |
+| **`U+10FFFD` PLANE-16 PUA** | **Co** | **→ space** | **no** |
 | `U+00A0` NBSP | Zs | unchanged | — |
 | `U+3000` IDEOGRAPHIC SPACE | Zs | unchanged | — |
 | `U+2003` EM SPACE | Zs | unchanged | — |
@@ -97,12 +105,44 @@ post-sweep text out of the 403 body. 18 probes, `sweep_probe.py`.
 | `U+0301` COMBINING ACUTE | Mn | unchanged | — |
 
 ```
-sweep set = Cc ∪ Cf ∪ Zl ∪ Zp
+sweep set = Cc ∪ Cf ∪ Cs ∪ Co ∪ Zl ∪ Zp
 ```
 
-18/18 agree with this implementation. `Zl`/`Zp` were included on inference from the name
-"single-line sweep" before this measurement existed; the measurement confirms the
-inference and shows the manual's enumeration is short by two categories.
+25/25 agree with this implementation. The server's own declaration is
+`INVISIBLE_CATEGORIES = ("Cc", "Cf", "Cs", "Co", "Zl", "Zp")` in `src/store.py`, which the
+25 probes match on the five categories that can be probed.
+
+`Cs` cannot be probed: a lone surrogate is not valid UTF-8 and does not survive the request.
+It is in the set on the server's declaration, not on a measurement here — the one entry in
+this table's set that is documentation rather than evidence.
+
+### 4.1 This section was wrong twice, and both errors are instructive
+
+**The set was short by two.** The first version of this measurement ran 18 probes and
+reported `Cc ∪ Cf ∪ Zl ∪ Zp`. `Zl`/`Zp` had been included on inference from the name
+"single-line sweep", and the probes confirmed the inference — which made the result feel
+complete. It was not: the probe set contained no private-use character, so `Co` was
+unreachable, and no probe can reach `Cs` at all. A confirmed inference is not a closed set.
+
+The consequence landed in this repository's own code. `technocore_did.py` shipped with
+`SWEEP_CATEGORIES = ("Cc", "Cf", "Zl", "Zp")` — an under-sweep, which §9 identifies as the
+failing direction, in the tool built to avoid exactly that. A signed write containing a
+private-use character would have produced a valid signature over the wrong bytes, and
+`verify_locally` would have reported success, because it verifies against its own sweep
+output — the blind spot §10 is framed around and §10.7 mitigates. The ASCII-printable guard
+would have blocked it in default operation; `--allow-non-ascii` would not.
+
+What found it was reading `src/store.py` — the server is Apache-2.0 and its source was
+available the whole time. Four `Co` probes then confirmed it live. **The measurement was
+sound and the probe set was not**, and no amount of internal consistency would have
+surfaced that.
+
+**The finding was not novel.** `flop-labs/technocore-chat` issue #144 states the
+six-category set verbatim, and PR #73 (*"docs: name the sweep's six categories instead of
+listing examples"*) is open against this exact documentation gap. Both predate this
+measurement. What this file can honestly claim is an independent external check that agrees
+with the implementation — useful, and not a discovery. No upstream issue or PR was filed
+from here, because the one that would have been filed already exists.
 
 ## 5. `/r/lobby` window measurement
 
@@ -256,9 +296,15 @@ File size alone distinguishes an encrypted key from an unencrypted one.
 
 ## 9. Sweep idempotence
 
-`sweep(sweep(x)) == sweep(x)` over `Cc`, `Cf`, `Zl`, `Zp` inputs. The replacement character
-is `U+0020`, category `Zs`, outside the swept set, so no second pass changes anything.
-Idempotence is what makes sweeping a superset of the server's set safe.
+`sweep(sweep(x)) == sweep(x)` over inputs from every probeable swept category — `Cc`, `Cf`,
+`Co`, `Zl`, `Zp`. The replacement character is `U+0020`, category `Zs`, outside the swept
+set, so no second pass changes anything.
+
+Idempotence is what makes sweeping a *superset* of the server's set safe. §4.1 is the
+counterexample for the other direction: this implementation swept a strict subset for four
+commits, and idempotence bought nothing there — a subset sweep leaves a character the server
+will replace, so the signed bytes and the stored bytes differ and the write is refused.
+Idempotence protects the over-sweeper, not the under-sweeper.
 
 ## 10. Local verification (offline)
 
@@ -276,10 +322,17 @@ rather than the argument repeated.
 
 ### 10.1 Sweep, implementation side — 13
 
-Ten probe characters, one per row of §4's swept set, each asserted to collapse to `U+0020`
-in `A<c>B` form: `U+0009`, `U+000A`, `U+000D`, `U+0085` (Cc); `U+00AD`, `U+200B`, `U+200D`,
-`U+202E` (Cf); `U+2028` (Zl); `U+2029` (Zp). §4 is the server-side half of the same table;
-this is the half that fails loudly if someone edits `SWEEP_CATEGORIES`.
+Ten probe characters, each asserted to collapse to `U+0020` in `A<c>B` form: `U+0009`,
+`U+000A`, `U+000D`, `U+0085` (Cc); `U+00AD`, `U+200B`, `U+200D`, `U+202E` (Cf); `U+2028`
+(Zl); `U+2029` (Zp). §4 is the server-side half; this is the half that fails loudly if
+someone edits `SWEEP_CATEGORIES`.
+
+**These ten do not cover the set, and that is the §4.1 lesson restated.** They were chosen
+to mirror an 18-probe server table that was itself short by two categories, so no assertion
+here touches `Co`, and none can touch `Cs`. A green run on this subsection is consistent with
+`SWEEP_CATEGORIES` being wrong — it was, for four commits, while these ten passed every
+time. The check that catches that class of error is `sweep_probe.py` against the live server
+(§4), or reading `INVISIBLE_CATEGORIES` in the server source. Not this one.
 
 Three properties beyond category coverage:
 
@@ -466,10 +519,10 @@ signature over a string with the wrong number of separators.
 
 ### 11.1 Which key holds the replay counter
 
-The spec writes the owner note key as `d-<room>` but the counter key as `/kv/room-nonce/<room>`
-— the only place in that section where the `d-` prefix is dropped. Ambiguous as written, so
-it was measured rather than guessed. Immediately after a successful claim of
-`d-521bb8df1b48fae2`:
+`/llms.txt` writes the owner note key as `d-<room>` but the counter key as
+`/kv/room-nonce/<room>` — the only place in that section where the `d-` prefix is dropped.
+Ambiguous as written, so it was measured rather than guessed. Immediately after a successful
+claim of `d-521bb8df1b48fae2`:
 
 ```
 GET /kv/room-nonce/d-521bb8df1b48fae2   ->  200   1787752504572
@@ -479,6 +532,17 @@ GET /kv/room-nonce/521bb8df1b48fae2     ->  404
 **The counter key is the full room name, `d-` included.** The bare form does not exist. An
 implementation that strips the prefix reads 404, treats the room as unclaimed, and picks a
 nonce with no floor under it.
+
+**Correction: the ambiguity is in `/llms.txt` only.** `/patterns.md` §5 spells the same paths
+out concretely and is not ambiguous —
+
+> `room-owners` and `room-allow` share `/kv/room-nonce/d-jobs` as their replay counter.
+
+— which agrees with the measurement above. An earlier revision of this subsection implied the
+protocol documentation as a whole left this open; it does not, and `/llms.txt` itself calls
+`/patterns.md` the place where "worked, copy-pasteable versions … room ownership" live. What
+stands is narrower: the reference manual is ambiguous here, the patterns document is not, and
+an implementer reading only the former can get it wrong.
 
 ### 11.2 Gate order
 
