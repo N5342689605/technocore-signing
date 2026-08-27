@@ -101,7 +101,12 @@ monitor caught it within thirty minutes of the deploy. Two of those lines matter
   repository, not the other way round.**
 
 `0.10.0` also carries `feat(limit): refuse cross-sender duplicate room writes (422)`, which
-is a new status code on the write path and is **not** measured anywhere here.
+is a new status code on the write path and is **not** measured anywhere here. The manifest
+caught up a few hours after the deploy and now publishes the parameter behind it —
+`duplicate_filter_seconds: 60` — so the rule has a number attached even though nothing here
+has exercised it. A `422` is a new failure mode for any client that retries a write, and this
+repository's own advice in README section 6 is to read the room before retrying; that advice
+was written against a server that had no duplicate filter.
 
 The lesson generalises past the tracker. **Prior art includes the current version of the
 spec, and the spec is edited.** A conformance record written against 0.9.7 can be made wrong
