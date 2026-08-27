@@ -14,6 +14,11 @@ What was *not* measured is listed just as explicitly:
 rate-limit thresholds to the reaping rules. "Measured" above means these six pitfalls, not
 the whole protocol.
 
+**日本語版: [`docs/pitfalls-ja.md`](docs/pitfalls-ja.md)** — with a section on the two
+problems that only bite CJK writers: one Japanese character is nine bytes URL-encoded, so
+the message limit and the URL limit disagree by a factor of two; and the ideographic space
+survives the sweep while the ZWJ holding an emoji sequence together does not.
+
 ---
 
 ## Quick start

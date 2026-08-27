@@ -633,9 +633,59 @@ and keeps the ledger in `room_nonces.json`, **separate from the message ledger**
 
 ---
 
+## 12. The sweep against CJK text and emoji (live)
+
+Measured 2026-08-27, same instrument as §4 — a garbage signature, then the post-sweep string
+read out of the `403` body. Two throwaway `p-` rooms, no key, nothing stored.
+
+§4 establishes the sweep set one code point at a time. This section asks the question a
+writer of Japanese actually has: **does my text survive?** It is worth its own section
+because two of the eight answers are counter-intuitive and both are invisible on screen.
+
+| Sent | Stored | |
+|---|---|---|
+| `A日本語テストB` | `A日本語テストB` | unchanged |
+| `Aあ　いB` (`U+3000` ideographic space) | `Aあ　いB` | **unchanged** |
+| `AがB` (か + `U+3099`, decomposed) | `AがB` | unchanged |
+| `AぱB` (は + `U+309A`, decomposed) | `AぱB` | unchanged |
+| `A👍️B` (emoji + `U+FE0F`) | `A👍️B` | unchanged |
+| `A日​本B` (`U+200B` inserted) | `A日 本B` | **swept** |
+| `A👩‍💻B` (ZWJ sequence) | `A👩 💻B` | **broken apart** |
+| `A👨‍👩‍👧B` (ZWJ sequence) | `A👨 👩 👧B` | **broken apart** |
+
+**Japanese script itself is inert.** Han, kana, the ideographic space and the combining
+voiced-sound marks are all `Zs` or `Mn`, outside the set. Nothing in §4 threatens ordinary
+Japanese prose.
+
+**ZWJ emoji sequences do not survive, and this is the trap.** `U+200D` is `Cf`, so the
+joiner becomes a space and one glyph becomes three. A signature over the raw text fails, and
+the failure presents as "signatures break when I include an emoji" — with no visible
+difference between what was sent and what was stored, because the joiner was never visible.
+§0's 403 body is the only way to see it.
+
+**`U+200B` is the same trap with a worse origin.** Zero-width space is inserted by editors
+and CMSes for line-breaking control in CJK typesetting, sometimes without the author's
+knowledge. It is `Cf`, it is swept, and it is by construction invisible in the source.
+
+Neither is a new rule — both follow from §4's `Cf`. They are recorded because deriving them
+from a category table is not the same as knowing them, and because the two failures a CJK
+writer will actually hit are not the two a category table makes salient.
+
+Written up for a Japanese audience in [`docs/pitfalls-ja.md`](../docs/pitfalls-ja.md), which
+also covers the URL-length problem: one CJK character is nine bytes percent-encoded, so the
+4096-character message limit implies roughly 36 KB of URL against an edge ceiling near 16 KB.
+The `GET` lane cannot carry a long Japanese message at all; `POST` is not optional.
+
+---
+
 ## Not covered by any of the above
 
 - Rate limit thresholds. Never hit one, so the documented per-IP buckets are untested here.
+- The URL length ceiling. §12 and the README both cite "around 16 KB" as the edge limit that
+  makes `POST` mandatory for long CJK text. That figure is the common CDN default, not a
+  measurement against this deployment — the boundary was never probed. What *is* measured is
+  the encoding arithmetic (9 bytes per CJK character) and the published 4096-character
+  message limit; the conclusion that the two disagree does not depend on the exact ceiling.
 - `POST` lane for signed writes at size. Exercised by `sweep_probe.py` at trivial lengths
   only.
 - The `room-allow` allow-list namespace, ownership handover, and the mailbox conventions.
