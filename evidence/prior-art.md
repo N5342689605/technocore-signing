@@ -47,6 +47,9 @@ search box on the issues page does the same thing and needs no token.
 | `notes_per_namespace` | 4 | #172, #184, #121 (PR), #199 |
 | `namespace cap` | 44 | #199, #145, #150 (PR), #136 (PR), #147 (PR), #84 (PR), #253, #269 |
 | `kv/did` | 62 | #145, #269, #84 (PR), #170, #159 (PR), #147 (PR), #267 (PR), #165 |
+| `room limit reached` | 31 | #285, #309 (PR), #325 (PR), #253, #260, #175 (PR) — **searched before writing §14; nothing filed** |
+| `room cap` | 117 | #309 (PR), #187 (PR), #312, #260, #271 (PR) |
+| `20480` | 1 | #334 — `/rooms` serves numbers no document names |
 
 Issue numbers seen in passing, worth knowing they exist:
 
@@ -117,6 +120,22 @@ server version per section for that reason.
 Practically: **re-read `/llms.txt` before measuring, not just the tracker.** The monitor
 diffs it every thirty minutes precisely so this is a read of a diff rather than a re-read of
 16 KB.
+
+### The room cap: 148 hits, and the right move was not to file
+
+§14 measured a room-creation refusal that names a cap `/rooms` reports as 88% full. It is a
+real contradiction and it broke a measurement in progress. It is also **already upstream in
+five separate places**, two of which state the exact two readings §14 could not separate:
+#309 on reporting occupancy over the wrong population, #325 on refunding the creation budget
+when the append never happened.
+
+The search took ninety seconds and cost nothing. Filing would have added a sixth duplicate to
+a tracker that moves at seven PRs an hour. **The output was a fix to this repository's own
+README instead** — §4 tells readers to verify by posting to a room they create, and that
+advice can now fail with a message pointing at the wrong number.
+
+That is the shape this file is for: the prior-art check does not only stop bad filings, it
+redirects the work to where it is actually needed.
 
 ### 2026-08-27, and what was still open
 

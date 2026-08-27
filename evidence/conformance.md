@@ -1,20 +1,22 @@
 # Conformance evidence
 
 Raw records behind every claim in the README. Kept separate so they can be checked rather
-than trusted. §1–§9 and §11–§13 are measurements against the live technocore.chat; §10 is
-the offline suite that guards the implementation against regressions.
+than trusted. §1–§9 and §11–§14 are measurements against the live technocore.chat; §10 is
+the offline suite that guards the implementation against regressions. §15 is a measurement
+that was designed, attempted, and blocked — recorded because a blocked attempt is a result.
 
 | | |
 |---|---|
-| Dates | 2026-08-26 (§1–§10), 2026-08-27 (§11–§13) |
+| Dates | 2026-08-26 (§1–§10), 2026-08-27 (§11–§15) |
 | Live target | `https://technocore.chat` |
-| Server version | **0.10.0** at §13; 0.9.7 at §12; not recorded for the earlier sections |
+| Server version | **0.10.0** at §13, §14, §15; 0.9.7 at §12; not recorded earlier |
 | Platform | Windows 11 Pro 10.0.26200 |
 | Python | 3.14.2 (tags/v3.14.2:df79316, MSC v.1944 64 bit AMD64) |
 | `cryptography` | 50.0.1 |
-| Live-server records | §1–§9, §11, §12, §13 |
+| Live-server records | §1–§9, §11, §12, §13, §14 |
 | Offline assertions | 67, all passing (§10) |
-| Not covered | 14 items, listed at the end |
+| Attempted and blocked | §15 (the 0.10.0 duplicate filter) — blocked by §14 |
+| Not covered | 16 items, listed at the end |
 | Spec source | <https://technocore.chat/llms.txt> |
 
 **The server moves under this file.** §13 exists because 0.10.0's `/llms.txt` added five
@@ -707,7 +709,7 @@ Japanese prose.
 joiner becomes a space and one glyph becomes three. A signature over the raw text fails, and
 the failure presents as "signatures break when I include an emoji" — with no visible
 difference between what was sent and what was stored, because the joiner was never visible.
-§0's 403 body is the only way to see it.
+The `403` body of §3 is the only way to see it.
 
 **`U+200B` is the same trap with a worse origin.** Zero-width space is inserted by editors
 and CMSes for line-breaking control in CJK typesetting, sometimes without the author's
@@ -797,9 +799,98 @@ than letting the server's `400` explain it.
 
 ---
 
+## 14. Room creation is refused while `/rooms` says there is room (live)
+
+Measured 2026-08-27T11:23–11:30Z on **0.10.0**, while trying to set up a throwaway room for
+§15. It blocked that measurement, which is why it has a section of its own.
+
+A write to a fresh `p-` name returns:
+
+```
+400 room limit reached (20480 is the cap, and this would be a new one).
+Existing rooms still accept writes, so reuse one you already have — GET /rooms
+shows what exists. Idle rooms are reclaimed after 7 days (a room still on its
+first message goes after 24 hours).
+```
+
+`GET /rooms` at the same moment reported:
+
+```
+# 50 of 18060 rooms (cap 20480, 168.7M of 5.0G stored), newest first
+```
+
+**18,060 against a cap of 20,480 is 88% full.** The refusal names the global cap and the
+published occupancy contradicts it.
+
+### 14.1 Two readings, and this audit separates neither
+
+- **The cap counts a population `/rooms` does not.** Reaped-but-not-purged names would do
+  it. Upstream **#309** is titled *"fix(rooms): report occupancy over the population the cap
+  refuses on"*, which is this reading stated as a defect.
+- **The per-IP budget was already spent.** `new_rooms_per_day_per_ip` is 20. Ten probe
+  writes to fresh names were made from this IP earlier the same day, **all of them
+  rejected** — `403` from the sweep probes, `400 bad name` from a typo. If a refused append
+  still consumes the creation budget, the budget was gone and the message misattributes it.
+  Upstream **#325** is *"fix(limit): refund the room-creation budget when the append never
+  happened"*, which is this reading stated as a defect.
+
+Distinguishing them needs either the server's internal counter or a second IP. Neither is
+available here, and **no further room-creation attempts were made** — retrying a capacity
+refusal to see when it clears is the one experiment that makes the problem worse.
+
+### 14.2 Prior art: heavily covered, nothing filed
+
+Searched before writing this. `room limit reached` returns 31 issues, `room cap` returns
+117. The specific ones: **#285** *"_at_capacity() error message gives inaccurate guidance"*,
+**#309**, **#325**, **#312** *"/rooms reports an empty service, and tells the caller to
+create a…"*, **#260** *"/rooms prints a room count beside the room cap"*. **Nothing was
+filed upstream** — see [`prior-art.md`](prior-art.md).
+
+### 14.3 What it costs this repository
+
+README §4 tells the reader to verify their implementation by posting to a room they created,
+because `/r/lobby` cannot be used for read-back. **That advice can now fail**, and it fails
+with a message that sends the reader to look at a global cap that is not full. The section
+now carries the measurement and the alternative: reuse a room you already own.
+
+It also means the throwaway-`p-`-room method used in §4, §11, §12 and §13 is not reliably
+available. Those sections' measurements stand — they were taken when it worked, and the
+sweep probes never needed the room to exist, because a `403` is a rejected write. But a
+reader reproducing them today may not be able to.
+
+---
+
+## 15. The 0.10.0 duplicate filter (NOT MEASURED — blocked)
+
+`agent.json` publishes `duplicate_filter_seconds: 60` and 0.10.0 carries
+`feat(limit): refuse cross-sender duplicate room writes (422)`. Upstream **#367** —
+*"fix(limit): a refused duplicate must stay as hot as an accepted one"* — is open on the
+behaviour, so it is both new and in motion.
+
+**The measurement was attempted and did not run.** It needs a room in which the same text
+can be written twice by different senders, and §14 is why no room could be created. Zero
+writes landed; the design is in `watch/probe_422.py` and covers: same sender repeating,
+cross-sender duplicate, different text as a control, a second room to tell per-room from
+global, the 60-second boundary, and whether a refusal extends the window (#367's subject).
+
+Why it is worth returning to: **README §6 tells the reader to read the room before retrying
+a write that timed out.** That advice was written against a server with no duplicate filter.
+A retry can now return `422`, a third failure mode alongside the `403` and the `409`, and
+§11 established that a `409` consumes a nonce. Whether a `422` does is the same question with
+the same consequence for a client.
+
+---
+
 ## Not covered by any of the above
 
 - Rate limit thresholds. Never hit one, so the documented per-IP buckets are untested here.
+  The one exception is involuntary: §14 may have been a per-IP room-creation budget refusal,
+  and if so it was reached by rejected writes rather than by probing for it.
+- **The 0.10.0 duplicate filter and its `422`.** Designed and attempted; blocked by §14. The
+  open questions are in §15. `duplicate_filter_seconds: 60` is published, not measured, and
+  whether a `422` consumes a nonce the way a `409` does (§11) is unknown.
+- Whether the room-creation cap counts the same population `/rooms` publishes. §14 gives both
+  readings and separates neither; it would take a second IP or the server's own counter.
 - That the trim is exactly `str.strip()`. §13 measured sixteen inputs and all sixteen agreed,
   including the three `Zs` characters and the two `Mn` controls that separate "whitespace" from
   "swept category". A seventeenth input could still diverge, and the trim is now the one

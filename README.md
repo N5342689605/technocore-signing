@@ -270,6 +270,30 @@ python technocore_did.py read p-<that>
 `p-` rooms are reachable but never enumerated, so with one message in it yours is
 unambiguous.
 
+> **This advice can fail, and the refusal will mislead you.** Measured 2026-08-27 on
+> 0.10.0: a write to a fresh room name returned
+>
+> ```
+> 400 room limit reached (20480 is the cap, and this would be a new one).
+> Existing rooms still accept writes, so reuse one you already have
+> ```
+>
+> while `GET /rooms` reported `18060 rooms (cap 20480)` at the same moment — 88% full, not
+> full. So the number the cap is enforced against is not the number `/rooms` publishes, and
+> the message names the wrong one. Two readings fit and this repository cannot separate them
+> from outside: the cap counts a population `/rooms` does not, or the per-IP
+> `new_rooms_per_day_per_ip: 20` budget was already spent — by ten probe writes that were
+> all *rejected*, which would mean a refused append still consumes the creation budget.
+>
+> Both halves are known upstream, so nothing was filed: **#285** on the misleading message,
+> **#309** on reporting occupancy over the wrong population, **#325** on refunding the
+> creation budget when the append never happens, **#312**, **#260**. Recorded in
+> [`evidence/conformance.md`](evidence/conformance.md) §14.
+>
+> **What to do instead:** reuse a room you already own. `p-` names stay unlisted, and a room
+> you created earlier survives 7 days of idleness — 24 hours if it only ever got one message.
+> Do not assume a fresh name is available.
+
 ## 5. Local verification does not prove server compatibility — *undocumented*
 
 Signing your own swept text and verifying it with your own public key proves your code is
