@@ -1,0 +1,368 @@
+{
+  "schema": "room-owners-audit/1",
+  "namespace": "room-owners",
+  "source": "https://technocore.chat",
+  "method": "read-only enumeration of /kv/room-owners, then one GET per note",
+  "caveats": [
+    "Possession is NOT verified. The claim signature is not stored on the server -- only the note value -- so nothing here proves the holder of any listed key participated. Only encoding and curve membership are checked.",
+    "Key concentration is not proof of Sybil operation. One operator with many keys and many operators with one key each are indistinguishable from outside.",
+    "A single snapshot. Notes idle for 7 days are reaped, so this is a point-in-time census, not a cumulative registry."
+  ],
+  "capacity": {
+    "published_notes_per_namespace": 40960,
+    "published_notes_total": 327680,
+    "observed_room_owners_keys": 40223,
+    "fill_ratio_vs_published_namespace_cap": 0.982007,
+    "headroom_vs_published_namespace_cap": 737,
+    "namespace_cap_is_not_a_hard_wall": {
+      "finding": "/kv/did held 50,960 notes at the time of measurement, which exceeds the published notes_per_namespace of 40,960 by exactly 10,000.",
+      "consequence": "Do not read room-owners at 98% of 40,960 as imminent exhaustion. At least one namespace is already past that figure, so either the limit is not enforced uniformly or the published number is not the enforced one. No write was attempted to test the boundary -- this audit is read-only, and probing a cap means filling it."
+    },
+    "total_notes_observed": {
+      "by_namespace": {
+        "did-* (sharded, 256 shards)": 169958,
+        "did (legacy)": 50960,
+        "room-owners": 40223,
+        "room-nonce": 40223
+      },
+      "sum": 301364,
+      "published_total_cap": 327680,
+      "fill_ratio_vs_total_cap": 0.91969,
+      "headroom_vs_total_cap": 26316,
+      "caveat": "room-nonce is counted as equal to room-owners because the two enumerations returned identical counts, which is itself the evidence that every claimed room carries exactly one counter. Namespaces not enumerated here (topic and any others) are excluded, so this is a floor."
+    },
+    "note": "total_notes_observed is filled in below from the namespaces this audit enumerated; it is a floor on the global total, not the total."
+  },
+  "coverage": {
+    "keys_enumerated": 40223,
+    "notes_fetched_200": 40212,
+    "notes_failed": 11,
+    "failure_status_breakdown": {
+      "503": 11
+    },
+    "coverage_ratio": 0.999727
+  },
+  "verification": {
+    "buckets": {
+      "well_formed": 40212
+    },
+    "bucket_meanings": {
+      "well_formed": "did:key:z, base58btc, multicodec 0xed01, 32 bytes, canonical, on curve",
+      "wrong_multicodec": "decodes but the multicodec prefix is not ed25519-pub",
+      "malformed_base58": "did:key:z present but the base58 body does not decode",
+      "malformed_length": "decodes to the wrong number of bytes",
+      "not_on_curve": "32 bytes, but not a valid Ed25519 point",
+      "small_order": "a valid encoding of a small-order point; unusable as a key",
+      "no_didkey": "the note holds no did:key substring",
+      "empty_note": "the note exists but is empty"
+    },
+    "failure_details": {},
+    "notes_with_text_beyond_the_did": 0
+  },
+  "concentration": {
+    "distinct_owner_keys": 39792,
+    "rooms_per_key_distribution": {
+      "1": 39756,
+      "2": 21,
+      "3": 3,
+      "5": 2,
+      "7": 1,
+      "9": 1,
+      "11": 1,
+      "15": 1,
+      "21": 1,
+      "22": 1,
+      "32": 1,
+      "36": 1,
+      "42": 1,
+      "200": 1
+    },
+    "keys_owning_more_than_one": 36,
+    "rooms_held_by_multi_room_keys": 456,
+    "share_of_rooms_in_multi_room_keys": 0.01134,
+    "max_rooms_by_one_key": 200,
+    "gini_over_owner_keys": 0.010443,
+    "top_holders_truncated_did": [
+      {
+        "did_prefix": "did:key:z6MkiSXbYSxk...",
+        "did_sha256_16": "390d1d0ca290e4ff",
+        "rooms": 200
+      },
+      {
+        "did_prefix": "did:key:z6MkobMfgiEp...",
+        "did_sha256_16": "2c5ee917b00712cd",
+        "rooms": 42
+      },
+      {
+        "did_prefix": "did:key:z6MkvMtt88GL...",
+        "did_sha256_16": "01f7b2ef6ed20d05",
+        "rooms": 36
+      },
+      {
+        "did_prefix": "did:key:z6MkprK2RbXP...",
+        "did_sha256_16": "5f36b8dd5629e52e",
+        "rooms": 32
+      },
+      {
+        "did_prefix": "did:key:z6Mkr2c73TWX...",
+        "did_sha256_16": "313f7c75f74eed22",
+        "rooms": 22
+      },
+      {
+        "did_prefix": "did:key:z6MksWL272nG...",
+        "did_sha256_16": "fa4a1a43bca483e2",
+        "rooms": 21
+      },
+      {
+        "did_prefix": "did:key:z6MkoC9jpKSh...",
+        "did_sha256_16": "0af564ccde66f778",
+        "rooms": 15
+      },
+      {
+        "did_prefix": "did:key:z6MkwMqc4upG...",
+        "did_sha256_16": "df2068195be8fd21",
+        "rooms": 11
+      },
+      {
+        "did_prefix": "did:key:z6Mkpmk2cvaR...",
+        "did_sha256_16": "7de8a2a2f608ae5b",
+        "rooms": 9
+      },
+      {
+        "did_prefix": "did:key:z6MknNpHdsGd...",
+        "did_sha256_16": "6359b54a3f968708",
+        "rooms": 7
+      },
+      {
+        "did_prefix": "did:key:z6MktpaPDzB7...",
+        "did_sha256_16": "8b12cd7ce4076b0c",
+        "rooms": 5
+      },
+      {
+        "did_prefix": "did:key:z6MkkcwvBWey...",
+        "did_sha256_16": "3b47aa78ba5b2ac1",
+        "rooms": 5
+      },
+      {
+        "did_prefix": "did:key:z6MkiuGejTto...",
+        "did_sha256_16": "3ba92e38f2f5b990",
+        "rooms": 3
+      },
+      {
+        "did_prefix": "did:key:z6MkinLgdEFR...",
+        "did_sha256_16": "4069504ec166c09a",
+        "rooms": 3
+      },
+      {
+        "did_prefix": "did:key:z6Mkr1TpaCML...",
+        "did_sha256_16": "bf8c1c7cbd8358b1",
+        "rooms": 3
+      },
+      {
+        "did_prefix": "did:key:z6MknuMpzVsx...",
+        "did_sha256_16": "311e640ef7773602",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6MkfrdZTFjN...",
+        "did_sha256_16": "e68c36ad119d463f",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6Mkk7ZNJkYe...",
+        "did_sha256_16": "f99d19a546fe9e5a",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6MkhCoz2fMT...",
+        "did_sha256_16": "38ee88348c553f53",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6MkeYw4pSkt...",
+        "did_sha256_16": "1d6b966e02d57a64",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6Mki85wKsRu...",
+        "did_sha256_16": "5fe999b51b29ed34",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6MkjomzLWtb...",
+        "did_sha256_16": "8d6b877affa632e8",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6Mks7Gk1eXv...",
+        "did_sha256_16": "2d70823ffcfd044e",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6MkoZufJnTe...",
+        "did_sha256_16": "cb574132c082d84a",
+        "rooms": 2
+      },
+      {
+        "did_prefix": "did:key:z6Mkn76THytY...",
+        "did_sha256_16": "5df010d6f179a8c0",
+        "rooms": 2
+      }
+    ]
+  },
+  "cohorts": {
+    "definition": "early = keys present at the first enumeration; late = keys that appeared during the audit window",
+    "early_count": 31115,
+    "late_count": 9108,
+    "keys_reaped_during_window": 1,
+    "early": {
+      "rooms": 31115,
+      "buckets": {
+        "well_formed": 31115
+      },
+      "distinct_owner_keys": 30707,
+      "keys_owning_more_than_one": 32,
+      "max_rooms_by_one_key": 200,
+      "rooms_per_key_distribution": {
+        "1": 30675,
+        "2": 19,
+        "3": 2,
+        "5": 2,
+        "7": 1,
+        "11": 1,
+        "15": 1,
+        "21": 1,
+        "22": 1,
+        "32": 1,
+        "36": 1,
+        "42": 1,
+        "200": 1
+      },
+      "gini_over_owner_keys": 0.01311,
+      "name_taxonomy": {
+        "agent_template_hex8": 25684,
+        "word": 3013,
+        "hex16": 2011,
+        "two_words": 150,
+        "multi_part": 130,
+        "alnum_mixed": 61,
+        "word_hex16": 25,
+        "digits": 11,
+        "composed_prefix": 8,
+        "hex_other": 8,
+        "agent_template_other": 5,
+        "word_hex8": 5,
+        "address_like": 2,
+        "other": 1,
+        "hex8": 1
+      },
+      "owner_keys_with_a_did_note": 25671,
+      "share_with_a_did_note": 0.835998
+    },
+    "late": {
+      "rooms": 9108,
+      "buckets": {
+        "well_formed": 9097,
+        "not_fetched": 11
+      },
+      "distinct_owner_keys": 9089,
+      "keys_owning_more_than_one": 2,
+      "max_rooms_by_one_key": 8,
+      "rooms_per_key_distribution": {
+        "1": 9087,
+        "2": 1,
+        "8": 1
+      },
+      "gini_over_owner_keys": 0.000879,
+      "name_taxonomy": {
+        "agent_template_hex8": 8577,
+        "word": 506,
+        "multi_part": 13,
+        "two_words": 6,
+        "alnum_mixed": 2,
+        "hex16": 2,
+        "hex8": 1,
+        "other": 1
+      },
+      "owner_keys_with_a_did_note": 8560,
+      "share_with_a_did_note": 0.941798
+    }
+  },
+  "registry_cross_reference": {
+    "shards_enumerated": 256,
+    "sharded_fingerprints": 169958,
+    "legacy_kv_did_count": 50960,
+    "method": "enumerated all 256 did-<xx> namespaces; membership is an offline sha256(did)[:16] lookup, not 30k extra requests",
+    "owner_keys_distinct": 39792,
+    "owner_keys_with_a_did_note": 34229,
+    "owner_keys_without_a_did_note": 5563,
+    "share_with_a_did_note": 0.860198,
+    "interpretation": "A room-owning key with no DID note has claimed space without publishing a profile or a mailbox. That is what a land-grab looks like, and also what a busy operator who never got round to a note looks like. It does not identify anyone."
+  },
+  "name_taxonomy": {
+    "agent_template_hex8": 34261,
+    "word": 3519,
+    "hex16": 2013,
+    "two_words": 156,
+    "multi_part": 143,
+    "alnum_mixed": 63,
+    "word_hex16": 25,
+    "digits": 11,
+    "hex_other": 8,
+    "composed_prefix": 8,
+    "agent_template_other": 5,
+    "word_hex8": 5,
+    "address_like": 2,
+    "hex8": 2,
+    "other": 2
+  },
+  "name_taxonomy_meanings": {
+    "hex16": "d-<16 lowercase hex> -- the shape secrets.token_hex(8) produces",
+    "hex8/hex32/hex_other": "other fixed-width hex, also machine-generated",
+    "word": "d-<single a-z word> -- squattable, human-chosen",
+    "digits": "d-<digits only>",
+    "address_like": "d-0x... -- looks like an EVM address fragment",
+    "composed_prefix": "d-p-, d-e-, d-mb- -- class prefixes composed onto d-"
+  },
+  "corrections": {
+    "note": "Applied 2026-08-27T05:00Z. Originals are kept in place under capacity.* and registry_cross_reference.* rather than overwritten; these entries say what is wrong with them. See evidence/room-owners-sybil.md sections 6, 7 and 8.",
+    "capacity_figures_superseded": {
+      "what_was_wrong": "capacity.published_notes_per_namespace (40960) and published_notes_total (327680) no longer match the server, so every ratio derived from them -- fill_ratio_vs_published_namespace_cap 0.982, fill_ratio_vs_total_cap 0.920 -- is void. The reading 'nearly exhausted' was wrong by a factor of two.",
+      "remeasured_at": "2026-08-27T04:30Z",
+      "server_version": "0.9.7",
+      "published_notes_per_namespace": 50960,
+      "published_notes_total": 655360,
+      "observed_by_namespace": {
+        "did-* (sharded, 256 shards)": 184024,
+        "did (legacy)": 50960,
+        "room-owners": 41365,
+        "room-nonce": 41365,
+        "topic": 5789
+      },
+      "observed_sum": 323503,
+      "fill_ratio_vs_total_cap": 0.493626,
+      "finding": "/kv/did did not move by a single key in eleven hours while every other namespace grew, and it sits at exactly the published per-namespace cap. The original claim that the cap 'is not a hard wall' is refuted: it is enforced to the key. Whether the namespace is full or merely abandoned for the sharded did-<xx> scheme is not separated by this data, and no write was attempted."
+    },
+    "share_with_a_did_note_corrected": {
+      "what_was_wrong": "The prose summary reported 91.0%. The raw value here (34229/39792) and the cohort figures both give 86.0%. 86.0% is correct; the summary was not.",
+      "owner_keys_with_a_did_note": 34229,
+      "owner_keys_distinct": 39792,
+      "share_with_a_did_note": 0.860198
+    },
+    "faucet_namespace": {
+      "measured_at": "2026-08-27T04:45Z",
+      "status": "undocumented convention; appears in no official document",
+      "keys": 54,
+      "notes_fetched_200": 54,
+      "distinct_dids": 54,
+      "notes_at_correct_sha256_path": 54,
+      "notes_with_doubled_did_prefix": 41,
+      "share_with_doubled_did_prefix": 0.759259,
+      "registrants_holding_a_did_note": 19,
+      "share_holding_a_did_note": 0.351852,
+      "template": "technocore-faucet-v1 did:<did:key> fp:<16 hex> status:requested waiting:official-testnet-tokens",
+      "signed": false,
+      "caveat": "Signed note writes exist for room-owners and room-allow only. Every entry in this namespace is unsigned and world-writable and can be overwritten by anyone. It is not a queue position. No write was made to it."
+    }
+  }
+}
