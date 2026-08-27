@@ -74,10 +74,41 @@ PROBES = [
 
 LEFT, RIGHT = "A", "B"  # markers bracketing the probe character
 
+# Edge probes. PROBES above brackets every character as A<c>B, which puts it in
+# the interior BY CONSTRUCTION -- and that is exactly why this file reported a
+# complete sweep for four commits while missing that the server also trims both
+# ends after replacing. The harness that made the table clean made the trim
+# unreachable. See evidence/conformance.md 13.
+#
+# (label, text, expected stored value). Expected values are from the live
+# measurement, not from what a local sweep produces.
+EDGE_PROBES = [
+    ("leading space",        "  AB",     "AB"),
+    ("trailing space",       "AB  ",     "AB"),
+    ("both ends",            "  AB  ",   "AB"),
+    ("interior spaces",      "A  B",     "A  B"),   # control: must NOT change
+    ("leading TAB (Cc)",     "\tAB",     "AB"),
+    ("trailing LF (Cc)",     "AB\n",     "AB"),
+    ("ZWSP ends (Cf)",       "​AB​", "AB"),
+    ("NBSP ends (Zs)",       " AB ", "AB"),
+    ("EM SPACE ends (Zs)",   " AB ", "AB"),
+    ("IDEO SPACE ends (Zs)", "　AB　", "AB"),
+    ("IDEO SPACE interior",  "A　B", "A　B"),  # control: Zs survives inside
+    ("VS-16 ends (Mn)",      "️AB️", "️AB️"),  # control
+    ("COMB ACUTE ends (Mn)", "́AB́", "́AB́"),  # control
+]
 
-def probe(room: str, ch: str, nonce: int) -> tuple[str | None, str]:
-    """Post one probe character; return the post-sweep text from the 403 body."""
-    text = f"{LEFT}{ch}{RIGHT}"
+
+def probe(room: str, ch: str, nonce: int, bracket: bool = True) -> tuple[str | None, str]:
+    """Post one probe; return the post-sweep text from the 403 body.
+
+    `bracket=True` wraps the probe as A<c>B, which is right for the category
+    table and **wrong for anything about the ends** -- it moves the character
+    into the interior. The edge probes pass bracket=False and send the string
+    exactly as written. Getting this wrong is how the first run of the edge
+    pass reported thirteen server mismatches that were all this function.
+    """
+    text = f"{LEFT}{ch}{RIGHT}" if bracket else ch
     fake_sig = base64.urlsafe_b64encode(os.urandom(64)).decode().rstrip("=")
     body = json.dumps(
         {"did": DUMMY_DID, "sig": fake_sig, "nonce": nonce, "text": text}
@@ -120,7 +151,8 @@ def main() -> None:
     room = sys.argv[1]
 
     print(f"target : {BASE_URL}/r/{room}")
-    print(f"probes : {len(PROBES)}   (about {int(len(PROBES)*DELAY)+5}s)")
+    print(f"probes : {len(PROBES)} category + {len(EDGE_PROBES)} edge   "
+          f"(about {int((len(PROBES)+len(EDGE_PROBES))*DELAY)+5}s)")
     print("=" * 78)
     print(f"{'character':28} {'cat':4} {'server':12} {'ours':12} {'agree'}")
     print("-" * 78)
@@ -163,7 +195,49 @@ def main() -> None:
             mismatches.append((name, cat, server_desc, ours_sweeps))
         time.sleep(DELAY)
 
+    # --- Second pass: the trim. Separate from the table above because it is a
+    #     different question -- not "which categories are replaced" but "what
+    #     happens at the ends" -- and the answer is invisible to an A<c>B harness.
     print("=" * 78)
+    print(f"\n{len(EDGE_PROBES)} edge probes (the trim)\n" + "-" * 78)
+    print(f"{'case':24} {'sent':22} {'stored':22} {'agree'}")
+    print("-" * 78)
+    trim_bad = []
+    for label, text, expected in EDGE_PROBES:
+        nonce += 1
+        swept, status = probe(room, text, nonce, bracket=False)
+        if swept is None:
+            # 400 empty text is the expected answer for whitespace-only input,
+            # not a failure -- report it as the result it is.
+            if expected == "" and "empty text" in status:
+                print(f"{label:24} {text!r:22} {'400 empty text':22} ok")
+            else:
+                print(f"{label:24} -- {status}")
+            time.sleep(DELAY)
+            continue
+        ok = swept == expected
+        print(f"{label:24} {text!r:22} {swept!r:22} {'ok' if ok else '** MISMATCH'}")
+        if not ok:
+            trim_bad.append((label, text, expected, swept))
+        time.sleep(DELAY)
+
+    print("=" * 78)
+    if trim_bad:
+        print(f"\n** {len(trim_bad)} edge mismatch(es). The server's trim is not what "
+              "this file recorded.\n")
+        for label, text, exp, got in trim_bad:
+            print(f"  {label}: sent {text!r}, expected {exp!r}, got {got!r}")
+        print("\n  The recorded behaviour is sweep-then-strip, matching Python's")
+        print("  str.strip() applied after the category replacement. If that no longer")
+        print("  holds, technocore_did.py sweep() needs changing and so does")
+        print("  evidence/conformance.md 13.")
+    else:
+        print("\nAll edge probes agree: replacement first, then both ends stripped.")
+        print("Note the three Zs controls -- NBSP, EM SPACE and IDEOGRAPHIC SPACE are")
+        print("NOT in the sweep set, survive in the interior, and are still removed at")
+        print("the ends. The two Mn controls survive at the ends, which is what shows")
+        print("the trim is whitespace-based rather than category-based.")
+
     if mismatches:
         print(f"\n** {len(mismatches)} mismatch(es). The local sweep needs fixing.\n")
         for name, cat, server_desc, ours in mismatches:
@@ -176,8 +250,9 @@ def main() -> None:
     else:
         print("\nAll probes agree. The local sweep matches the server.")
 
-    print(f"\nNote: observed by bracketing each character as {LEFT}...{RIGHT}. "
-          "The server's 403 body is the only source of truth here.")
+    print(f"\nNote: the category pass brackets each character as {LEFT}...{RIGHT}; the edge "
+          "pass sends\n      its strings unbracketed, because bracketing is what hid the trim "
+          "for four commits.\n      The server's 403 body is the only source of truth in both.")
 
 
 if __name__ == "__main__":

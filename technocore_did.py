@@ -141,9 +141,28 @@ SWEEP_CATEGORIES = ("Cc", "Cf", "Cs", "Co", "Zl", "Zp")
 
 
 def sweep(text: str) -> str:
-    return "".join(
+    """サーバの single-line sweep を再現する。カテゴリ置換 → **両端を strip**。
+
+    strip は 2026-08-27 に追加した。サーバ 0.10.0 の /llms.txt が
+    "then the ends are trimmed" と明記し、実測で Python の `str.strip()` と
+    7ケース完全一致した（evidence/conformance.md §13）。
+
+    順序は「置換してから strip」で、これも実測で決まっている。逆順だと
+    U+200B ZWSP（Cf、かつ `isspace()` が False）は strip で残り、置換後に
+    ' AB ' になるはずだが、実測は 'AB' だった。
+
+    **strip を忘れると、端に空白のあるテキストで署名が落ちる。** しかも
+    `verify_locally` は自分の sweep 出力に対して検証するので成功し、
+    サーバだけが 403 を返す —— §4.1 で Co を取りこぼしたのと同じ形の失敗で、
+    このリポジトリはそれを2度やったことになる。
+
+    副作用として、§4 が「素通り」と報告した `Zs`（U+00A0 / U+3000 / U+2003）は
+    **文中では残るが端では消える。** カテゴリ表だけ見ると見落とす。
+    """
+    swept = "".join(
         " " if unicodedata.category(ch) in SWEEP_CATEGORIES else ch for ch in text
     )
+    return swept.strip()
 
 
 def is_pure_ascii_printable(text: str) -> bool:
@@ -534,8 +553,22 @@ def cmd_say(args) -> None:
     room, text = args.room, args.text
 
     swept = sweep(text)
+    # 何が起きたのかを分けて報告する。「不可視文字を置換した」と
+    # 「端の空白を落とした」は原因も対処も違う。
     if swept != text:
-        print("注意: 不可視文字が含まれていたためスペースに置換しました。")
+        only_trimmed = swept == text.strip()
+        print("注意: 端の空白を落としました（サーバも同じことをします）。" if only_trimmed
+              else "注意: 不可視文字をスペースに置換し、端を切り落としました。")
+        print(f"      署名対象: {swept!r}")
+
+    # sweep 後に何も残らないとサーバは 400 を返す（実測。本文は
+    # "400 empty text: nothing visible was left after the single-line sweep"）。
+    # 送る前に落としたほうが分かりやすい。
+    if not swept:
+        sys.exit(
+            "中断: sweep 後に何も残りません。\n"
+            "  空白や不可視文字だけのテキストは、サーバが 400 で拒否します。"
+        )
     if len(swept) > 4096:
         sys.exit("メッセージが4096文字を超えています。")
 
@@ -543,14 +576,21 @@ def cmd_say(args) -> None:
     # 本ツールの sweep() はサーバ側 sweep の「推定」でしかなく、両者がズレると
     # 署名対象のバイト列が食い違って検証に落ちる。しかも verify_locally は
     # 自分の sweep 結果を自分で検証しているだけなので、このズレを検出できない。
-    # ASCII印字可能文字だけなら sweep は恒等写像になり、ズレようがない。
+    #
+    # 「ASCII印字可能文字だけなら sweep は恒等写像」という以前の根拠は、
+    # 2026-08-27 に strip を足した時点で厳密には成り立たなくなった —— 端に
+    # 空白のある純ASCII文字列は、いまも変換される。署名対象が strip 後の
+    # バイト列であることは変わらないので安全性は保たれるが、**恒等写像だから
+    # 安全という論法はもう使えない。** 正しい根拠は「カテゴリ判定に依存する
+    # 部分が消えるので、ズレる余地が strip の1点に縮む」である。
     if not is_pure_ascii_printable(swept) and not args.allow_non_ascii:
         sys.exit(
             "中断: 署名対象に非ASCII文字が含まれています。\n"
             "  サーバ側の single-line sweep と本ツールの sweep() が一致しない場合、\n"
             "  署名対象のバイト列がズレて検証に落ちます。ローカル検証は自己整合性\n"
             "  しか見ないため、この失敗を事前に検出できません。\n"
-            "  ASCII印字可能文字のみに収めれば sweep は恒等写像になり安全です。\n"
+            "  ASCII印字可能文字のみに収めれば、ズレる余地は端の strip だけに\n"
+            "  縮みます（それも実測で str.strip() と一致を確認済み）。\n"
             "  承知のうえで投稿する場合は --allow-non-ascii を付けてください。"
         )
 
@@ -597,6 +637,11 @@ def cmd_note(args) -> None:
     key = load_private_key()
     did = did_from_private(key)
     value = sweep(args.value)
+    if not value:
+        sys.exit(
+            "中断: sweep 後に何も残りません。\n"
+            "  空白や不可視文字だけの値は書き込む意味がありません。"
+        )
     if len(value) > 8192:
         sys.exit("ノートが8192文字を超えています。")
 

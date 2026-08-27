@@ -1,21 +1,26 @@
 # Conformance evidence
 
 Raw records behind every claim in the README. Kept separate so they can be checked rather
-than trusted. §1–§9, §11 and §12 are measurements against the live technocore.chat; §10 is
+than trusted. §1–§9 and §11–§13 are measurements against the live technocore.chat; §10 is
 the offline suite that guards the implementation against regressions.
 
 | | |
 |---|---|
-| Dates | 2026-08-26 (§1–§10), 2026-08-27 (§11, §12) |
+| Dates | 2026-08-26 (§1–§10), 2026-08-27 (§11–§13) |
 | Live target | `https://technocore.chat` |
-| Server version | 0.9.7 at the time of §12; not recorded for the earlier sections |
+| Server version | **0.10.0** at §13; 0.9.7 at §12; not recorded for the earlier sections |
 | Platform | Windows 11 Pro 10.0.26200 |
 | Python | 3.14.2 (tags/v3.14.2:df79316, MSC v.1944 64 bit AMD64) |
 | `cryptography` | 50.0.1 |
-| Live-server records | §1–§9, §11, §12 |
-| Offline assertions | 51, all passing (§10) |
-| Not covered | 13 items, listed at the end |
+| Live-server records | §1–§9, §11, §12, §13 |
+| Offline assertions | 67, all passing (§10) |
+| Not covered | 14 items, listed at the end |
 | Spec source | <https://technocore.chat/llms.txt> |
+
+**The server moves under this file.** §13 exists because 0.10.0's `/llms.txt` added five
+words — *"then the ends are trimmed"* — that named a behaviour §4 had not measured and this
+implementation did not reproduce. Record the version with the measurement; an unversioned
+number is a weaker record than it looks.
 
 ---
 
@@ -310,7 +315,7 @@ Idempotence protects the over-sweeper, not the under-sweeper.
 
 ## 10. Local verification (offline)
 
-51 assertions, 51 passing, no network access. Run with `TECHNOCORE_HOME` redirected to a
+67 assertions, 67 passing, no network access. Run with `TECHNOCORE_HOME` redirected to a
 throwaway directory — set before importing the module, so nothing can resolve to the real
 agent home. The signing key is the public constant `bytes(range(32))`, held in memory only;
 no `.pem` file is created at any point.
@@ -501,6 +506,45 @@ Signed payload: `lobby|1756166400000|conformance probe`.
 > `bytes(range(32))` — the bytes `00 01 02 … 1f` — is a test pattern, not a secret. Never
 > post anything with it, and never treat the DID above as an identity.
 
+### 10.9 The trim — 16
+
+Added 2026-08-27 with the `strip()` fix in §13.3. Each pair is
+`sweep(sent) == stored`, with the stored side taken from the live measurement in
+§13 rather than from what the local implementation happens to produce.
+
+Inputs are written as escapes, not pasted literals. A pasted invisible character
+is indistinguishable from a different invisible character of the same width --
+which is the entire subject of this file -- and a literal tab or newline inside a
+Markdown table silently breaks the table. The first version of this subsection did
+both, which is a small demonstration of the point.
+
+| # | Sent | Expected | |
+|---|---|---|---|
+| 1-3 | `"  AB"`, `"AB  "`, `"  AB  "` | `"AB"` | ends trimmed |
+| 4 | `"A  B"` | `"A  B"` | interior spaces survive |
+| 5 | `"\tAB"` TAB | `"AB"` | `Cc` -> space -> trimmed |
+| 6 | `"AB\n"` LF | `"AB"` | `Cc` -> space -> trimmed |
+| 7 | `"\u200bAB\u200b"` ZWSP | `"AB"` | `Cf` -> space -> trimmed |
+| 8 | `"\u00a0AB\u00a0"` NBSP | `"AB"` | **`Zs`, never swept, still trimmed** |
+| 9 | `"\u2003AB\u2003"` EM SPACE | `"AB"` | **same** |
+| 10 | `"\u3000\u3042\u3000"` | `"\u3042"` | **same, with kana** |
+| 11 | `"\u3042\u3000\u3044"` | unchanged | interior `Zs` survives |
+| 12 | `"\ufe0fAB\ufe0f"` VS-16 | unchanged | `Mn` survives at the ends |
+| 13 | `"\u0301AB\u0301"` comb. acute | unchanged | same |
+| 14 | `"\u3000\u00a0 \u65e5\u672c\u8a9e \u00a0\u3000"` | `"\u65e5\u672c\u8a9e"` | mixed edges |
+| 15 | `"\u3000\u00a0\u2003AB"` | `"AB"` | three different `Zs` |
+| 16 | `"   "` | `""` | server answers `400`, see 13 |
+
+**What this subsection cannot catch is the same thing §10.1 could not.** It asserts
+that the trim matches sixteen measured pairs; it does not establish that
+`str.strip()` and the server's trim agree on every input. They agreed on sixteen,
+including the three `Zs` characters and the two `Mn` controls that make the
+whitespace-versus-category distinction visible. A seventeenth input could still
+diverge. The check that would find that is `sweep_probe.py` against a live server,
+not this list.
+
+Suite total moves 51 → 67.
+
 ## 11. Owned rooms: the replay counter (live)
 
 Measured against the live server while implementing `claim`. Throwaway Ed25519 keys held in
@@ -680,9 +724,86 @@ The `GET` lane cannot carry a long Japanese message at all; `POST` is not option
 
 ---
 
+## 13. The sweep trims the ends, and `Zs` does not survive there (live)
+
+Measured 2026-08-27T07:20Z against **0.10.0**, same instrument as §4 and §12.
+
+**This is the third error in the sweep sections, and the one this repository had
+the least excuse for.** `/llms.txt` at 0.10.0 says the swept text is stored
+*"then the ends are trimmed"* — five words that were not in the 0.9.x text. That
+sentence was read, and the behaviour it names was then measured, in that order,
+which is the right order and had not been used the previous two times.
+
+Sixteen strings, two throwaway rooms, no key. Every one agreed with Python's
+`str.strip()` applied *after* the category replacement.
+
+| Sent | Stored | |
+|---|---|---|
+| `"  AB"` / `"AB  "` / `"  AB  "` | `"AB"` | ends trimmed |
+| `"A  B"` | `"A  B"` | **interior spaces kept** |
+| `"\tAB"` (`Cc`) | `"AB"` | swept to space, then trimmed |
+| `"AB\n"` (`Cc`) | `"AB"` | same |
+| `"​AB​"` (`Cf`) | `"AB"` | same |
+| `" AB "` NBSP (`Zs`) | `"AB"` | **trimmed, though `Zs` is not swept** |
+| `"　あ　"` ideographic (`Zs`) | `"あ"` | **same** |
+| `" AB "` EM space (`Zs`) | `"AB"` | **same** |
+| `"あ　い"` | `"あ　い"` | interior `Zs` kept |
+| `"️AB️"` (`Mn`) | unchanged | `Mn` survives at the ends |
+| `"́AB́"` (`Mn`) | unchanged | same |
+| `"   "` | — | **`400 empty text: nothing visible was left after the single-line sweep`** |
+
+### 13.1 The order is measured, not assumed
+
+Replacement happens first, then the trim. `U+200B` settles it: it is `Cf`, and
+`"​".isspace()` is **`False`**. Trim-then-replace would leave `" AB "`;
+replace-then-trim gives `"AB"`. The server gave `"AB"`.
+
+### 13.2 What this breaks, and what it means for §4
+
+**§4 said `U+00A0`, `U+3000` and `U+2003` are "left standing". That is true only
+in the interior.** At either end they are removed — not by the sweep, which does
+not cover `Zs`, but by the trim that follows it. A category table cannot express
+this, and reading one is how it was missed: the probe harness in §4 brackets every
+character as `A…B`, which puts the probe character in the interior **by
+construction**. The design that made §4 clean made §13 unreachable.
+
+`Mn` is the control that shows the trim is whitespace-based rather than
+category-based: `U+FE0F` and `U+0301` are not whitespace, and they survive at the
+ends where `Zs` does not.
+
+### 13.3 The implementation was wrong again
+
+`technocore_did.py` computed the sweep without the trim, so a signed write whose
+text had leading or trailing whitespace signed bytes the server does not store —
+and `verify_locally` would report success, because it verifies against its own
+sweep output. **Identical in shape to the `Co` omission in §4.1: an under-sweep,
+in the tool built to prevent under-sweeps, invisible to the local check.**
+
+`sweep()` now returns `swept.strip()`. The sixteen strings above were re-checked
+against the local implementation after the change and all sixteen agree; they are
+recorded as assertions in §10.9.
+
+The ASCII guard's justification also had to change. It rested on *"printable
+ASCII makes the sweep the identity function, so there is nothing to disagree
+about."* With the trim that is no longer literally true — `"  hello  "` is
+printable ASCII and is still transformed. The signature is computed over the
+post-trim bytes so it remains correct, but the argument now has to be the weaker
+and more honest one: restricting to ASCII removes every category-dependent step,
+leaving the trim as the single remaining place the two implementations could
+disagree — and that one is measured.
+
+`cmd_say` and `cmd_note` now refuse an empty post-sweep result client-side rather
+than letting the server's `400` explain it.
+
+---
+
 ## Not covered by any of the above
 
 - Rate limit thresholds. Never hit one, so the documented per-IP buckets are untested here.
+- That the trim is exactly `str.strip()`. §13 measured sixteen inputs and all sixteen agreed,
+  including the three `Zs` characters and the two `Mn` controls that separate "whitespace" from
+  "swept category". A seventeenth input could still diverge, and the trim is now the one
+  category-independent step where this implementation and the server could disagree.
 - The URL length ceiling. §12 and the README both cite "around 16 KB" as the edge limit that
   makes `POST` mandatory for long CJK text. That figure is the common CDN default, not a
   measurement against this deployment — the boundary was never probed. What *is* measured is

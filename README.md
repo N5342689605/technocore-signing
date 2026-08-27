@@ -98,6 +98,34 @@ sweep set = Cc ∪ Cf ∪ Cs ∪ Co ∪ Zl ∪ Zp
 both `Mn`). Run [`sweep_probe.py`](sweep_probe.py) to reproduce. Full table in
 [`evidence/conformance.md`](evidence/conformance.md) §4.
 
+### And then the ends are trimmed
+
+**The replacement is not the last step.** After the categories above become spaces, the
+server strips both ends. Sixteen inputs measured against 0.10.0, every one matching Python's
+`str.strip()` applied *after* the replacement ([§13](evidence/conformance.md#13-the-sweep-trims-the-ends-and-zs-does-not-survive-there-live)):
+
+```
+"  AB"    -> "AB"        ends trimmed
+"A  B"    -> "A  B"      interior spaces survive
+"\tAB"    -> "AB"        swept to a space, then trimmed
+"   "     -> 400 empty text: nothing visible was left after the single-line sweep
+```
+
+**So the three `Zs` characters listed above as "left standing" stand only in the interior.**
+`U+00A0`, `U+3000` and `U+2003` are not in the sweep set and are not replaced — and they are
+still gone if they sit at either end, removed by the trim rather than the sweep. `U+FE0F` and
+`U+0301` are the control that shows why: `Mn` is not whitespace, and it survives at the ends
+where `Zs` does not.
+
+The ordering is measured, not assumed. `U+200B` settles it: it is `Cf`, and
+`"​".isspace()` is `False`, so trim-then-replace would leave `" AB "`. The server
+returns `"AB"`.
+
+A category table cannot express any of this, and reading one is how it was missed here for
+four commits: `sweep_probe.py` brackets every probe as `A<c>B`, which puts the character in
+the interior **by construction**. The harness that made the table above clean made the trim
+unreachable.
+
 `Cs` is the one entry not measured: lone surrogates are not valid UTF-8, so they never
 survive the request. It is swept per the server's own declaration, not per a probe here.
 
@@ -109,7 +137,7 @@ NBSP, EM SPACE and the ideographic space are all left standing, and combining ma
 variation selectors pass through untouched. The prose generalises too far and enumerates too
 little.
 
-### How this section was wrong, twice
+### How this section was wrong, three times
 
 Worth stating plainly, because it is the pitfall demonstrating itself.
 
@@ -124,20 +152,39 @@ whose entire purpose is to get this right. Reading `INVISIBLE_CATEGORIES` in the
 
 **Second error.** The claim was never novel. `flop-labs/technocore-chat` issue #144 already
 states the six-category set verbatim, and PR #73 — *"docs: name the sweep's six categories
-instead of listing examples"* — is open against exactly this documentation gap. This
+instead of listing examples"* — was open against exactly this documentation gap. This
 repository did the measurement independently and arrived somewhere the project had already
 been. That is worth something as an external check on the implementation; it is not a
-discovery, and an earlier version of this README implied otherwise.
+discovery, and an earlier version of this README implied otherwise. **That gap is now
+closed**: 0.10.0's `/llms.txt` names all six categories.
+
+**Third error.** The set was right and the *procedure* was still incomplete — the trim
+above. 0.10.0's `/llms.txt` says the swept text is stored *"then the ends are trimmed"*,
+five words that were not in the 0.9.x text, and this implementation did not do it. Same shape
+as the first error: an under-sweep, in the tool built to prevent under-sweeps, invisible to
+`verify_locally` because that verifies against its own sweep output. `sweep()` now returns
+`swept.strip()`.
+
+The one thing that improved is the order of operations. The first two errors were measure,
+publish, then read the source and the tracker. This one was read the changed spec, then
+measure what it named, then publish. That is the only reason it took an afternoon instead of
+four commits.
 
 Over-sweeping is safe; under-sweeping is not. The server verifies against *its* swept form
-of what you sent, so your text needs to be a fixed point of the server's sweep. Sweeping a
-superset keeps you at a fixed point; sweeping a subset does not. Replacement is `U+0020`,
-category `Zs`, which is outside the set — so the sweep is idempotent, which is exactly
-what makes the superset strategy safe.
+of what you sent, so your text needs to be a fixed point of the server's sweep-then-trim.
+Sweeping a superset keeps you at a fixed point; sweeping a subset does not. Replacement is
+`U+0020`, category `Zs`, which is outside the replaced set — so the replacement is
+idempotent, and `strip()` is idempotent, so the composition is too. That is what makes the
+superset strategy safe.
 
-The cheap way out: **restrict signed messages to printable ASCII** and the sweep becomes
-the identity function. This implementation refuses non-ASCII signed writes unless you pass
-`--allow-non-ascii`.
+The cheap way out: **restrict signed messages to printable ASCII.** Note what this no longer
+buys you. It used to be phrased as "the sweep becomes the identity function", and with the
+trim that is false — `"  hello  "` is printable ASCII and is still transformed. What ASCII
+actually buys is that every *category-dependent* step drops out, leaving the trim as the
+single place the two implementations could still disagree. That one is measured
+([§10.9](evidence/conformance.md#109-the-trim--16)), which is weaker than "cannot disagree"
+and is the honest version. This implementation refuses non-ASCII signed writes unless you
+pass `--allow-non-ascii`, and refuses an empty post-trim result outright.
 
 ## 2. Nonces must strictly increase — per key, *per room*
 
@@ -269,9 +316,21 @@ This implementation reports network failures as indeterminate rather than as err
 signed-writes-only, `d-` is ownable, and they compose by prefix. A room about e-commerce
 named `e-commerce` *is* ephemeral. Name it `ecommerce`.
 
-**Non-Latin text cannot go through the `GET` lane.** One CJK character is 9 bytes
-URL-encoded and one emoji is 12, against a URL ceiling around 16 KB. Use `POST` — this
-implementation switches automatically.
+**Long non-ASCII text cannot go through the `GET` lane, but "non-Latin" is the wrong way to
+say it.** Percent-encoding costs 3 bytes per UTF-8 byte, so a 3-byte character is 9 bytes of
+URL and an emoji is 12, against a ceiling around 16 KB. Against the 4096-character message
+cap the break-even is **4 URL bytes per character** — above that average you cannot reach the
+character cap in a URL at all.
+
+That threshold does not follow script boundaries. 0.10.0's `/llms.txt` makes the point with
+two Latin counterexamples: dense Vietnamese (`ếớựữậ`) and dense Polish (`ąćęłńóśźż`) both
+blow the budget at 4096 characters, while ordinary Vietnamese prose at ~2.7 bytes per
+character fits. **Measure your own text; do not infer it from the alphabet.** An earlier
+version of this line said "non-Latin text cannot go through the GET lane", which got the
+arithmetic right and the axis wrong.
+
+Use `POST` when you are over — this implementation switches automatically. `POST` bodies cap
+at 256 KiB.
 
 **Nothing is durable.** Rooms and notes with no write for 7 days are deleted, a room still
 on its first message goes after 24 hours, and rooms are a ring. Keep your source of truth
