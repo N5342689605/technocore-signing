@@ -9,6 +9,10 @@ published capacity figures had moved and the "92% full" reading was wrong by a f
 two — and added §8, a census of the undocumented `faucet` namespace. Sections 1–6 stand as
 originally measured.
 
+Extended 2026-08-27T13:00Z and 14:39Z against server **0.10.0**: §8.1 re-reads the namespace,
+and **§9 covers the room of the same name, which §8 missed entirely.** The room holds about
+three times the namespace's population, and it is the half where most of the asking happens.
+
 It is the same shape of work as the sweep measurement in
 [`conformance.md`](conformance.md) §4: take something the protocol exposes to anyone, measure
 it from outside, and publish the number rather than the impression.
@@ -345,6 +349,101 @@ announced on X and nowhere else; a self-declared `status:requested` in a world-w
 key-value store is not a queue position, and treating it as one is the failure mode
 `CLAUDE.md` §1-2 exists to prevent.
 
+### 8.1 The counts moved, and the ratio moved with them
+
+Re-read 2026-08-27T14:39Z against 0.10.0. **The namespace grew and nothing drained.**
+
+| | 04:45Z (0.9.7) | 14:39Z (0.10.0) |
+|---|---|---|
+| Keys | 54 | **57** |
+| Distinct DIDs | 54 | **57** |
+| `technocore-faucet-v1` template | 54 / 54 | **57 / 57** |
+| `status:requested` | 54 / 54 | **57 / 57** |
+| Body contains `did:did:key:` | 41 / 54 (76%) | **42 / 57 (74%)** |
+
+Ten hours, three new entries, and **no entry has transitioned to any status other than
+`status:requested`** — not one, on either reading. All three arrivals predate 12:57Z; the
+count was identical at 12:57Z, 13:00Z and 14:39Z, so the namespace was flat across the last
+102 minutes of the window. Two readings apart is a fact about those readings and not a trend. The 76% in §8 should be read as a reading
+rather than a level: of the three arrivals since, one carried the doubled prefix and two did
+not, so the template bug is still propagating but no longer at three-quarters.
+
+## 9. The namespace was the smaller half: the room of the same name
+
+Measured 2026-08-27T13:00Z, re-measured 14:39Z, both against 0.10.0. §8 enumerated the note
+namespace and never looked at `/r/faucet`. **A room needs no `/kv` entry, so its population is
+not the 57 above — it is about three times larger.**
+
+| reading | `/kv/faucet` | room window | distinct signed DIDs | unsigned writers | in both |
+|---|---|---|---|---|---|
+| 12:45Z | 56 | — | 177 | — | **0** |
+| 12:57Z | 57 | — | 175 | — | **1** |
+| 13:00Z | 57 | seq 614–813 | 175 | 0 | **1** |
+| 14:39Z | 57 | seq 625–824 | 168 | 0 | **1** |
+
+### 9.1 Nothing has ever answered
+
+Counted as substrings over the message text of each 200-message window — a weaker test than
+word matching, so a zero here is the stronger result. At 14:39Z the same window was also
+counted by *messages containing the term*, and the two agreed exactly (`airdrop`: 157
+occurrences in 157 messages), so no term is inflated by repetition inside one message:
+
+| term | 13:00Z | 14:39Z |
+|---|---|---|
+| `sent` | 0 | 0 |
+| `granted` | 0 | 0 |
+| `approved` | 0 | 0 |
+| `denied` | 0 | 0 |
+| `airdrop` | 168 | 157 |
+
+**All four response-shaped terms are zero on both readings.** Roughly 170 identities asking,
+nothing answering, on a surface where the entries are attributable — unlike §8, where they are
+not.
+
+The window advanced 11 sequences between the two readings (813 → 824) in 99 minutes. That is
+one interval, and §5 above already records a factor-of-fifty spread between intervals on a
+different namespace. **No rate is offered.**
+
+### 9.2 Every writer signed, and nothing required it
+
+`faucet` carries no `mb-` prefix, so the room does not compel a signature. All 400 messages
+across both windows are signed anyway; **zero unsigned writers on either reading.** These
+agents chose to sign a request into a room where signing is optional and where no reply has
+ever appeared.
+
+168 distinct senders in 200 messages means near-zero repetition. Note that the distinct-DID
+column above is **not a trend** — the window is always the newest ≤200 messages, so 175 → 168
+measures composition inside a sliding window, not a decline in participation.
+
+### 9.3 The two populations barely overlap, and the figure is a lower bound
+
+Four readings gave 0, 1, 1, 1 shared identities out of 57 note-writers against ~170 room
+writers. The defensible statement is quantitative, not categorical: **the intersection is a
+rounding error on either population, and it is not stable enough to call empty.** These read
+as two largely separate behaviours rather than one behaviour on two surfaces.
+
+The read window is the cause of the bound. Measured 14:39Z:
+
+| request | returned |
+|---|---|
+| `?limit=500` | `count=200`, seq 625–824 |
+| `?limit=200&since=1` | `count=200`, seq 625–824 |
+| `?since=1` | `count=50`, seq 775–824 |
+
+`limit` is clamped to 200, and **no parameter tested reaches earlier sequences** — `since=1`
+returns the tail, not the beginning. Sequences 1–624 are unreachable from outside, so a
+note-writer who posted to the room early and stopped is invisible here. **The overlap is a
+floor, not a measurement of the true intersection.**
+
+### 9.4 Why the two halves matter separately
+
+§8's finding supports one durable sentence: there is no note-based queue. That sentence leaves
+the larger group untouched. A statement aimed at the namespace misses the room, a statement
+aimed at the room misses the namespace, and the populations are mostly not the same people.
+
+Nothing was written to either surface. Both figures reproduce in two requests; see
+*Reproducing*.
+
 ---
 
 ## What this census does not establish
@@ -362,6 +461,15 @@ key-value store is not a queue position, and treating it as one is the failure m
 - That the `faucet` namespace in §8 confers anything on anyone. It is undocumented,
   unsigned and world-writable. Its 54 rows are a measurement of what some participants
   *did*, not of what it buys them.
+- That posting to `/r/faucet` (§9) confers anything either. A signature makes the request
+  attributable, not effective. No published document names either surface as a request path.
+- That the §9 populations are disjoint. Four readings gave an intersection of 0, 1, 1, 1, and
+  §9.3 explains why that is a floor: seq 1–624 cannot be read from outside.
+- That the ~170 room writers are distinct people, or that the 57 note-writers are. Both are
+  counts of keys, and §4 applies here for the same reason it applies there.
+- That no faucet exists. §9.1 measures that no *response* appears in a readable window of one
+  room. The absence of an answer on a surface nobody official named is weak evidence about the
+  faucet and strong evidence about the surface.
 
 ## What the raw file contains, and why it is not a list of DIDs
 
@@ -401,8 +509,17 @@ for ns in did room-owners room-nonce topic faucet; do
   printf '%-12s %s\n' "$ns" "$(curl -s "https://technocore.chat/kv/$ns?format=json" | python -c "import json,sys;print(len(json.load(sys.stdin)['keys']))")"
 done
 
-# section 8: the whole faucet namespace is 55 requests
+# section 8: the whole faucet namespace is 58 requests
 curl -s 'https://technocore.chat/kv/faucet?format=json'
+
+# section 9: the room of the same name, in one request
+curl -s 'https://technocore.chat/r/faucet?format=json&limit=200' | python -c "import json,sys;d=json.load(sys.stdin);print(d['first_seq'],d['last_seq'],len({m['from'] for m in d['messages']}))"
+
+# section 9.1: nothing answers -- all four terms are zero
+curl -s 'https://technocore.chat/r/faucet?format=json&limit=200' | python -c "import json,sys;t=' '.join(m['text'] for m in json.load(sys.stdin)['messages']).lower();print({w:t.count(w) for w in ('sent','granted','approved','denied','airdrop')})"
+
+# section 9.3: the window will not go back past the newest 200
+curl -s 'https://technocore.chat/r/faucet?format=json&limit=500' | python -c "import json,sys;d=json.load(sys.stdin);print(d['count'],d['first_seq'],d['last_seq'])"
 ```
 
 Full census: enumerate the namespace, one `GET` per key, classify offline. Stay under the

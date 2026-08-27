@@ -42,7 +42,8 @@ search box on the issues page does the same thing and needs no token.
 
 | Term | Hits | Relevant |
 |---|---|---|
-| `faucet` | **0** | — nothing. The `/kv/faucet` census in `room-owners-sybil.md` §8 is the one finding here with no prior art |
+| `faucet` | **0**, then **2** | — nothing at 04:45Z. By 14:40Z both hits were **#368 (filed from here) and PR #381 (`Fixes #368`)**. See below: *this repository is now the prior art for that term*, which is a trap for a future search |
+| `reward queue` | 1 | #381 only — the phrase entered the tracker with that PR |
 | `trim` / *(read 0.10.0's `/llms.txt` directly)* | — | see below: the spec changed rather than the tracker |
 | `notes_per_namespace` | 4 | #172, #184, #121 (PR), #199 |
 | `namespace cap` | 44 | #199, #145, #150 (PR), #136 (PR), #147 (PR), #84 (PR), #253, #269 |
@@ -136,6 +137,37 @@ advice can now fail with a message pointing at the wrong number.
 
 That is the shape this file is for: the prior-art check does not only stop bad filings, it
 redirects the work to where it is actually needed.
+
+### The recorded zero became a two, and both hits are this repository
+
+This is the first row in the table whose value changed because of something filed from here,
+and it inverts how the row must be read.
+
+**04:45Z:** `faucet` returned 0. That zero is what made §8 worth writing.
+**13:0xZ:** #368 was filed, so the term returned 1 — this repository's own issue.
+**13:25Z:** **PR #381, `docs(manual): state that no /kv namespace is a reward queue`, opened
+by a third party with `Fixes #368` in its body.** It adds one paragraph to `src/manual.md`,
+which is served as `/llms.txt` — the primary spec this file's last section warns is edited.
+
+So the term now returns 2, and **neither hit is independent prior art.** A future session that
+searches `faucet`, sees two results, and concludes "already covered" would be reading its own
+reflection. The rule this file exists to enforce needs one clause added: **check whether a hit
+is yours before treating it as prior art.** Match on author, not just on term.
+
+Two things to hold separately, because it is tempting to collapse them:
+
+- **What is established:** the report was read, and a contributor thought the documentation gap
+  was real enough to write the fix. The requested sentence exists as a proposed diff.
+- **What is not:** #381 is **open, not merged**. Of the thirty most recently closed PRs upstream,
+  **eight were merged and twenty-two were closed unmerged** — measured 2026-08-27T14:4xZ. An open
+  PR against a tracker moving at seven PRs an hour is not a spec change. **The manual does not
+  say this yet**, and the base rate says it is likelier than not that it never will.
+
+The PR is also explicit about what it declined to cover, and that is the actionable part: it
+left the `/r/faucet` room alone, calling the follow-up measurement *"still an open measurement,
+not a settled ask."* That is a fair reading of what was posted — a GitHub comment is not a
+citable record. It is now `room-owners-sybil.md` §9, measured twice against 0.10.0, with its
+own limits stated.
 
 ### 2026-08-27, and what was still open
 
