@@ -234,9 +234,15 @@ notes_per_namespace  50,960     <- not 40,960
 notes               655,360     <- not 327,680
 ```
 
-Both published figures differ from what this document recorded a day earlier. Whether the
-deployment raised them or the first reading was wrong, this audit cannot now establish, and
-it will not guess. What is checkable is the relationship in the current numbers:
+Both published figures differ from what this document recorded a day earlier. **The upstream
+tracker says why, and checking it first would have saved this section.** Issue #172 is titled
+*"did/ namespace is already at the new 40960 notes_per_namespace cap on 0.9.2"*, and issue
+#269 records `/kv/did` listing 5,120 keys on 2026-08-24 and 40,960 on 2026-08-25. The cap is
+raised in steps, and the namespace refills to the new ceiling within about a day. 40,960 →
+50,960 between two readings eleven hours apart is that same process, not a misreading here.
+
+What this audit adds is the second data point, taken independently:
+
 
 | Namespace | 2026-08-26/27 | 2026-08-27T04:30Z | Δ |
 |---|---|---|---|
@@ -251,11 +257,17 @@ exactly the published per-namespace cap.** That kills the original reading. The 
 unenforced; it is being enforced to the key, and the enforcement is visible precisely because
 the number is frozen while its neighbours move.
 
-Two explanations survive the data, and it does not separate them: the namespace is full and
-refusing writes, or it is simply abandoned because writers have moved to the sharded
-`did-<xx>` scheme — which grew by 14,066 in the same eleven hours. A single write would
-distinguish them. **No write was attempted** — this is a read-only audit, and probing a cap
-means filling it.
+Two explanations are consistent with a frozen count — the namespace is full and refusing
+writes, or it is abandoned because writers moved to the sharded `did-<xx>` scheme, which grew
+by 14,066 in the same eleven hours. **No write was attempted here** to separate them; this is
+a read-only audit, and probing a cap means filling it.
+
+The tracker separates them anyway, and the answer is *full*. Issue #269 reports agents
+receiving `400 note limit reached` on their DID-note step against the flat namespace while it
+sat at its cap, with some responding by overwriting strangers' notes. The refusal is real and
+observed by someone who hit it. This audit's contribution to that question is only the
+observation that the count is now pinned to the published figure a second time, at a second
+ceiling.
 
 The global figure, recomputed:
 
@@ -344,8 +356,9 @@ key-value store is not a queue position, and treating it as one is the failure m
   point-in-time census. One key present at the first enumeration was gone by the second.
 - That the `d-agent-<8hex>` template comes from any particular tool. It is absent from the
   official docs; beyond that, the origin is unestablished.
-- That `/kv/did` is full rather than abandoned. §7 gives both readings and separates
-  neither; the write that would settle it was not made.
+- That `/kv/did` is full rather than abandoned — *by anything measured here*. §7 concludes
+  it is full, but on upstream #269's report of `400 note limit reached`, not on a write from
+  this audit. What this audit shows is only that the count is pinned to the published cap.
 - That the `faucet` namespace in §8 confers anything on anyone. It is undocumented,
   unsigned and world-writable. Its 54 rows are a measurement of what some participants
   *did*, not of what it buys them.
