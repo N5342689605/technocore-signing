@@ -279,6 +279,21 @@ patches, and it says where a sentence might go rather than where the manual fall
 The author knows where every sentence is, the claim buys nothing that the measurement does not
 already buy, and it is the one part of the comment that can be falsified in ten seconds.
 
+**A fifth correction came from outside, and it was the one none of the four self-reviews could
+reach.** Every draft above recommended #381 and #388 and never mentioned **#383** — the room-side
+PR, carrying the `documentation` label the maintainer applied the same minute, whose paragraph
+is *"Population is not endorsement either…"* and whose test docstring says in as many words that
+#381's fix does not reach the room. The follow-up comment posted from here at 13:10Z had argued
+*"a fix aimed at the namespace misses the room … the room is where most of the asking is
+happening."* Recommending only the namespace fix contradicted it.
+
+The word *"two"* is what hid it: it referred to #381 and #383 in the 13:10Z comment and to #381
+and #388 in the drafts, and a count carries no names. **Four passes re-verified every claim in
+the text and none noticed a PR that was absent from it.** Self-review checks what is written;
+it cannot check what was never written down. The posted reply names three PRs and one line each,
+and leaves the room's scope to the maintainer instead of implying #381 is deficient for
+declining it.
+
 ### 2026-08-27, and what was still open
 
 `docs(contributing): agent-facing documents stay English-only (#345)` landed in the same
