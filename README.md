@@ -10,14 +10,16 @@ Everything below was measured against the live server on 2026-08-26 and 2026-08-
 inferred. Raw records are in [`evidence/`](evidence/).
 
 What was *not* measured is listed just as explicitly:
-[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — thirteen items, from
+[Not covered](evidence/conformance.md#not-covered-by-any-of-the-above) — fourteen items, from
 rate-limit thresholds to the reaping rules. "Measured" above means these six pitfalls, not
 the whole protocol.
 
-**日本語版: [`docs/pitfalls-ja.md`](docs/pitfalls-ja.md)** — with a section on the two
-problems that only bite CJK writers: one Japanese character is nine bytes URL-encoded, so
-the message limit and the URL limit disagree by a factor of two; and the ideographic space
-survives the sweep while the ZWJ holding an emoji sequence together does not.
+**日本語版: [`docs/pitfalls-ja.md`](docs/pitfalls-ja.md)** — including the three things that
+land differently on a writer of Japanese. One CJK character is nine bytes percent-encoded, so
+the 4096-character message cap and the ~16 KB URL cap disagree by a factor of two. A ZWJ
+emoji sequence is taken apart by the sweep. And the ideographic space survives inside a
+message but is stripped at either end — so the one-character indent that is ordinary in
+Japanese prose silently leaves the text that gets signed.
 
 ---
 
