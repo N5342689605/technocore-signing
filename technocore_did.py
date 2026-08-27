@@ -87,6 +87,13 @@ MULTICODEC_ED25519_PUB = b"\xed\x01"
 # 仕様: <room>, <nick>, <ns>, <key> は全てこの形。
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,47}$")
 
+# 書き込みの台帳（CLAUDE.md §4）。鍵と違い、これはリポジトリ内に置く。
+# log/ は .gitignore 済みなので公開されない。
+#
+# カレントディレクトリではなく【スクリプトの位置】に固定する。どこから呼んでも
+# 同じ1本に積むためで、cd 先ごとに台帳が分裂すると証跡として使えなくなる。
+ACTIVITY_PATH = Path(__file__).resolve().parent / "log" / "activity.jsonl"
+
 
 # --------------------------------------------------------------------------
 # base58btc（multibase の 'z' プレフィックス用）
@@ -547,6 +554,77 @@ def cmd_show(args) -> None:
         print(f"nonce ledger : {NONCE_PATH}")
 
 
+def _seq_from_response(response: str, text: str) -> int | None:
+    """サーバの応答から、いま書いた行の seq を拾う。
+
+    応答はルームのレンダリングで、各行が `[<seq>] <ts> <from> <text>` の形。
+    **最後の行を取るのでは足りない** —— 応答が返るまでの間に他人の書き込みが
+    後ろに付くと、他人の seq を自分の記録にしてしまう。本文が一致する行の中で
+    最大の seq を取り、見つからなければ諦めて None にする。
+
+    残る曖昧さは「同一本文が自分の後ろに来た場合」だが、0.10.0 の
+    cross-sender duplicate filter（422、`duplicate_filter_seconds: 60`）が
+    他人による直後の同一本文を拒否するので、実際に起きるのは
+    **自分が同じ本文を先に投げていた場合**に寄る。そのときは新しい方が
+    自分の書き込みなので、最大を取るのが正しい。
+
+    seq が取れないことは失敗ではない。書き込みは既に成立している。
+    """
+    best = None
+    for line in response.splitlines():
+        m = re.match(r"^\[(\d+)\]\s", line)
+        if m and line.rstrip().endswith(text):
+            seq = int(m.group(1))
+            if best is None or seq > best:
+                best = seq
+    return best
+
+
+def record_activity(
+    kind: str,
+    room: str,
+    text: str,
+    nonce: int | None = None,
+    response: str | None = None,
+) -> None:
+    """成立した書き込みを log/activity.jsonl に1行積む（append-only）。
+
+    **この関数は例外を投げない。** 呼ばれる時点で書き込みは既にサーバに
+    届いている。ここで落とすと、成功した投稿が失敗したように見え、
+    しかも nonce は消費済みなので再実行も安全ではない。記録に失敗したら
+    手で追記できるよう、その行をそのまま画面に出す。
+
+    **拒否された書き込みは積まない。** http_get / http_post は 4xx/5xx を
+    例外にせず `"HTTP <code>\\n<body>"` という文字列で返すので、呼び出し側が
+    素直に渡すと 403 が証跡になってしまう。判定をここ1か所に置くのは、
+    次に書き込み経路が増えたときに同じ間違いをしないため。
+
+    取りこぼす場合が一つある。タイムアウトは HTTPError ではないので上位に
+    投げ、この関数は呼ばれない —— しかし書き込みは既に landed しているかも
+    しれない（`evidence/conformance.md` §6、上流 #143）。その場合はルームを
+    読んで確かめ、手で1行足すこと。**自動では判定できない。**
+    """
+    if response is not None and re.match(r"^HTTP [45]\d\d\b", response):
+        return
+    rec = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "room": room,
+        "seq": _seq_from_response(response, text) if response else None,
+        "nonce": nonce,
+        "text": text,
+        "kind": kind,
+    }
+    line = json.dumps(rec, ensure_ascii=False)
+    try:
+        ACTIVITY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with ACTIVITY_PATH.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError as exc:
+        print(f"注意: 投稿は成立しましたが、台帳に記録できませんでした: {exc}")
+        print(f"      {ACTIVITY_PATH} に手で追記してください:")
+        print(f"      {line}")
+
+
 def cmd_say(args) -> None:
     key = load_private_key()
     did = did_from_private(key)
@@ -621,15 +699,15 @@ def cmd_say(args) -> None:
             f"/say-signed/{did}/{sig}/{nonce}/"
             + urllib.parse.quote(swept, safe="")
         )
-        print(http_get(url))
+        resp = http_get(url)
     else:
         print("（非ASCIIまたは長文のため POST を使用）")
-        print(
-            http_post(
-                f"{BASE_URL}/r/{urllib.parse.quote(room, safe='')}",
-                {"did": did, "sig": sig, "nonce": nonce, "text": swept},
-            )
+        resp = http_post(
+            f"{BASE_URL}/r/{urllib.parse.quote(room, safe='')}",
+            {"did": did, "sig": sig, "nonce": nonce, "text": swept},
         )
+    print(resp)
+    record_activity("say", room, swept, nonce, resp)
 
 
 def cmd_note(args) -> None:
@@ -655,7 +733,12 @@ def cmd_note(args) -> None:
     if args.dry_run:
         print(f"--- dry-run ---\npath : /kv/{ns}/{k}\nvalue: {value}")
         return
-    print(http_post(f"{BASE_URL}/kv/{ns}/{k}", {"value": value}))
+    resp = http_post(f"{BASE_URL}/kv/{ns}/{k}", {"value": value})
+    print(resp)
+    # ノートにルームは無いので、room 欄にはノートのパスを入れる。
+    # 台帳のスキーマは1本に保ちたいので、欄を増やすより意味を広げる。
+    # ノートは署名しないので nonce も無い（null のまま）。
+    record_activity("note", f"/kv/{ns}/{k}", value, response=resp)
 
 
 def cmd_claim(args) -> None:
@@ -727,6 +810,8 @@ def cmd_claim(args) -> None:
     )
     resp = http_get(url)
     print(resp)
+    # 409（既に所有者が居る）を含め、拒否は record_activity 側で弾かれる。
+    record_activity("claim", room, value, nonce, resp)
     if resp.startswith("HTTP 409"):
         print(
             "\n409 = 既に所有者が居ます。上の本文が現在の所有者の did:key です。\n"
