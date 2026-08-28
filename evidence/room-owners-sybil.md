@@ -526,6 +526,138 @@ aimed at the room misses the namespace, and the populations are mostly not the s
 Nothing was written to either surface. Both figures reproduce in two requests; see
 *Reproducing*.
 
+## 10. An outside series arrived that predates every reading above
+
+On 2026-08-28T00:08Z a contributor to the upstream repository, `Elfet`, replied on #368 with
+a ten-minute poll of `GET /kv/faucet` running since **2026-08-26T00:02Z** — the window this
+census has no readings for, because §8 began at 04:45Z on the 27th. They kept counts only and
+volunteered the same caveat §8.2 carries: churn inside a constant count is invisible to a
+count.
+
+Their change points, quoted:
+
+```
+2026-08-26 00:02Z    2      (first observation — the namespace already existed)
+2026-08-26 03:55Z    3
+2026-08-27 01:03Z    4
+2026-08-27 01:24Z   10
+2026-08-27 01:35Z   46      <- +36 in 11 minutes
+2026-08-27 01:56Z   54
+2026-08-27 12:27Z   56
+2026-08-27 13:00Z   57
+2026-08-27 23:23Z   58
+```
+
+**This is not verifiable from here** — the series is theirs, the window is closed, and nothing
+this repository holds reaches back before 04:45Z. It is recorded as a second party's reading,
+not as a measurement of this audit.
+
+### 10.1 What could be checked here was checked, and it matches
+
+Re-read 2026-08-28T01:47Z against 0.10.0, read-only, before writing any of this section.
+
+| field | `Elfet`, as posted | here @ 01:47Z |
+|---|---|---|
+| keys | 58 | **58** |
+| body contains `did:did:key:` | 43 / 58 (74%) | **43 / 58 (74%)** |
+| off-template (`url:`+`kit:`, no `waiting:`) | 3 | **3, and the same three fingerprints** |
+| `status:` histogram | `requested` throughout | **`requested` × 58, single bucket** |
+
+Four fields, two parties, roughly ninety minutes apart, no disagreement. §8.2 stored key sets
+from 17:31Z precisely so a later reading could say more than a count could, and this is the
+first occasion it paid: **+1 −0 against the 18:08Z set**, so the 58th is an arrival and not a
+replacement.
+
+One discrepancy, recorded because smoothing it over is the habit this file exists to break:
+the comment dates its census **00:20Z** and the comment itself was created at **00:08:08Z**,
+with `updated_at` equal to `created_at` — so the stated measurement time is twelve minutes
+after a post that was never edited. Most likely a slip in a timestamp typed by hand. It changes
+nothing here, and the reason it changes nothing is the point: **the right-hand column is not a
+citation.** Every figure in it was re-measured from the server before this section was written,
+so the agreement holds whatever hour the left-hand column was taken at.
+
+### 10.2 The shape corrects §8.1's reading, and §8.1 could not have seen it
+
+§8.1 called the namespace *"flat across the last 102 minutes"* and read three arrivals in ten
+hours as *"still propagating but no longer at three-quarters."* Against the full curve that is
+the wrong tense. **4 → 54 in fifty-three minutes on the 27th, then four more in the twenty-two
+hours after.** Every reading in §8 and §8.2 is downstream of a burst that had already stopped,
+which is why the population looked static: it was, and the stability was the aftermath rather
+than a rate.
+
+Nothing measured here was wrong. **What was wrong is that two readings an hour apart were used
+to describe a process** — the caution §8.1 states in its own last sentence, *"two readings apart
+is a fact about those readings and not a trend"*, and then does not fully obey. A curve is a
+different instrument from a census and this audit never had one.
+
+### 10.3 The three off-template entries, and a decision reversed
+
+§8.2 recorded the three `url:`/`kit:` entries and stated: *"the repositories they advertise are
+not visited or named, and in a world-writable namespace an entry is not evidence about who
+wrote it."* `Elfet` reached the same position independently — *"naming a repository is not
+evidence of authoring anything"* — and left the source of the burst as an open question.
+
+**That decision was reversed on 2026-08-28, and the three URLs were fetched.** The reason to
+record the reversal rather than quietly act on it: the caution was epistemic, not procedural,
+and reading a repository's own published source is a different act from inferring authorship
+from a world-writable note. The result is set out below because it **supports the caution with
+evidence instead of leaving it as a principle**, which is the strongest form it can take.
+
+Of the three repositories named in the three notes, at 2026-08-28T01:5xZ:
+
+| | |
+|---|---|
+| contains no reference to `faucet` in any file | **1 of 3** (all nine files fetched, zero occurrences) |
+| does not resolve — `404` on the API | **1 of 3** |
+| contains a subcommand that writes the note | **1 of 3** |
+
+So **an entry naming a repository tells you nothing about what wrote the entry**, and that is
+now measured rather than assumed: two of the three advertised repositories cannot have produced
+the note that advertises them. Neither repository is named here. The names are in the private
+working notes; they add nothing to the mechanism and this document is public.
+
+### 10.4 The mechanism `did:did:key:` was guessed from, found in source
+
+§8 attributed the doubled prefix to `f"did:{did}"` *"when `did` already begins with `did:`"* —
+an inference from the output shape, with nothing behind it. The one repository of the three that
+does contain a faucet writer contains that construction literally, in a note-formatting module,
+inside a function that emits the `technocore-faucet-v1` line. **The inferred mechanism is real
+and published.** It is not a typo repeated forty-three times; it is one line of code.
+
+What this does **not** establish, and the distinction is the whole of it: that repository emits
+the *seed* template — `url:` and `kit:` fields, no `waiting:` — and its last push predates the
+burst by thirty-one hours. It accounts for one of the three seeds. **It does not account for the
+fifty-five `waiting:official-testnet-tokens` entries**, whose template contains a field this one
+never writes. The lineage `Elfet` describes is one step further back than any repository reached
+from here.
+
+### 10.5 "Malformed" picks a parse without saying which
+
+#368 is titled *"…76% of the entries are malformed"*, and §8 says the same. The count is now
+confirmed twice by two parties. **The word is the part that needs qualifying**, and it took an
+outside census to make the split visible as a split rather than as a defect rate:
+
+| spelling | count | split on the first `:` gives | read whole as a DID |
+|---|---:|---|---|
+| `did:did:key:z6Mk…` | 43 | `did` → `did:key:z6Mk…` ✓ | ✗ not a DID |
+| `did:key:z6Mk…` | 15 | `did` → `key:z6Mk…` ✗ | ✓ a valid DID |
+
+**No parse satisfies both, and no served document defines this template**, so neither spelling
+is conformant or non-conformant to anything. Under §8's own template box — `did:<did:key>` — the
+43 are the ones that match it. What survives either reading is that the field is **inconsistent
+across the population**, and inconsistency is what actually breaks a consumer; *malformed* asserts
+a correct form that nothing publishes.
+
+The split does not follow the seed/burst line either. All three seeds carry the doubling, so
+within the fifty-five burst entries it is **40 doubled to 15 bare** — one template with two
+spellings of one field in circulation, which is likelier to be fifteen writers editing what
+looked wrong than two sources.
+
+**This correction is recorded here and not on the thread.** Two corrections have already been
+posted to #368, the number in the title is right, and the characterisation is arguable rather
+than false — `Elfet`'s own comment uses *malformed* too. Adding a third correction over a word
+would cost the thread more than it returns.
+
 ---
 
 ## What this census does not establish
@@ -556,6 +688,15 @@ Nothing was written to either surface. Both figures reproduce in two requests; s
   or overwritten. §8.2 measures the histogram at one instant. Key sets were only stored from
   2026-08-27T17:31Z, and until then a count of 57 could not distinguish a static namespace
   from an equal number of arrivals and departures.
+- That the arrival curve in §10 is a measurement of this audit. It is a second party's series
+  covering a window this repository has no readings for, reproduced because it is checkable
+  going forward, not because it was checked backwards.
+- That any repository caused the burst. §10.3 and §10.4 establish that one published kit
+  contains the `did:` construction and writes one of the three seeds, and that two of the three
+  advertised repositories cannot have written the notes naming them. The template that fifty-five
+  entries actually carry was not found in any source read here.
+- That the doubled prefix is an error. §10.5 sets out both parses; the population is inconsistent
+  in that field, and no served document says which spelling is intended.
 
 ## What the raw file contains, and why it is not a list of DIDs
 

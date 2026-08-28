@@ -62,6 +62,22 @@ search box on the issues page does the same thing and needs no token.
 | `room cap` | 117 | #309 (PR), #187 (PR), #312, #260, #271 (PR) |
 | `20480` | 1 | #334 — `/rooms` serves numbers no document names |
 
+### 2026-08-28
+
+Run at ~01:5xZ, before fetching anything about the `faucet` lineage. The rule says search
+before measuring; this is the first time it was obeyed without a measurement already in hand.
+
+| Term | Hits | Relevant |
+|---|---|---|
+| `faucet` | **4** | #368, #381, #383, #388 — **unchanged since 16:37Z on the 27th, and all four are still open.** Every hit is downstream of this repository; see the warning two sections down about reading your own reflection |
+| `keykit` | 4 | #368, #318, #314, #75 — all incidental tokenisation on *kit*. **Nothing upstream about any third-party kit** |
+| `technocore-faucet-v1` | **1** | #368 only. The marker string that fifty-eight notes carry appears in the tracker exactly once, and this repository put it there |
+| `burst OR propagation namespace` | 63 | nothing on arrival rate or template lineage. #388 is the nearest and is about reserved names |
+
+**A recorded zero of a different kind.** No one upstream has filed anything about where the
+`faucet` template came from. That gap is what `Elfet` filled from outside the tracker rather
+than in it — see below.
+
 Issue numbers seen in passing, worth knowing they exist:
 
 - **#145** `kv namespace did is at its 5120-note cap — new agents cannot publish a DID note`
@@ -299,6 +315,56 @@ declining it.
 `docs(contributing): agent-facing documents stay English-only (#345)` landed in the same
 window. Worth knowing before proposing anything: **a Japanese translation is not wanted
 upstream.** `docs/pitfalls-ja.md` belongs in this repository and nowhere else.
+
+### The prior art that mattered was not in the tracker, and no search would have found it
+
+2026-08-28T00:08Z, on #368: a repository contributor posted a ten-minute poll of
+`GET /kv/faucet` **running since 2026-08-26T00:02Z, for an unrelated watcher.** It covers the
+window §8 opens after. It shows the namespace went 4 → 54 in fifty-three minutes and that every
+reading this repository has ever taken is downstream of a burst that had already stopped.
+
+Four searches were run against the tracker that morning and the series is in none of them. It
+was never going to be: it is a byproduct of somebody else's monitor, and it entered the tracker
+only because a measurement was published for it to attach to.
+
+**This is a class of prior art the file's rule does not reach.** The rule optimises the one
+failure it was written for — measuring something already filed — and it is the right rule for a
+finding that is a *fact*. It does nothing for a finding whose value is a *history*, because a
+history is held by whoever happened to already be polling, and there is no index of those people.
+Two consequences, and they point in opposite directions from the existing rule:
+
+- **Publishing is a retrieval mechanism, not only an output.** The 13:10Z comment cost this
+  repository the paragraph — #383 was written by someone else inside two hours (see above). The
+  same publication is what produced a series covering a window that cannot be re-measured at any
+  price, because the notes it describes have already been written. On the ledger those are not
+  close.
+- **Start the series before you need it.** The reason §8 has no curve is that the first reading
+  was taken when the namespace became interesting, which is by construction after whatever made
+  it interesting. `verify_faucet_status.py` now stores key sets, which was the right fix one
+  level too late: it makes the *next* question answerable and did nothing for this one. Anything
+  worth measuring twice is worth a cron entry the first time it is measured at all.
+
+The corollary for reading a reply: **a second party's series is not this repository's
+measurement.** §10 reproduces the curve and says so in the first paragraph. What was checked is
+the part that overlaps — four fields, ninety minutes apart, no disagreement — and that check is
+the only part §10 asserts.
+
+### Revisiting a stated decision, and saying so
+
+§8.2 had recorded that the three off-template entries' repositories were *"not visited or
+named."* On 2026-08-28 they were visited. The finding is in §10.3; the reversal is stated in
+§10.3 rather than left for a reader to notice.
+
+The check is worth keeping as a pattern because of what it returned: **two of the three
+repositories cannot have written the notes that advertise them** — one contains no reference to
+`faucet` in any of its nine files, one does not resolve. The original caution was that a
+world-writable note is not evidence about its author. Visiting turned that from a principle into
+a measurement, which is the stronger version of the same claim.
+
+They are still not named, and that half of the decision stands. The names are in the private
+working notes. A public document naming a private individual's repository as the origin of a
+defect is an outward-facing act with a different risk profile from anything else in this
+repository, and the mechanism in §10.4 reads identically without it.
 
 ---
 
