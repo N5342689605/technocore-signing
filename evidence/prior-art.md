@@ -366,6 +366,38 @@ working notes. A public document naming a private individual's repository as the
 defect is an outward-facing act with a different risk profile from anything else in this
 repository, and the mechanism in §10.4 reads identically without it.
 
+### The question was answered by a third party before it was asked here
+
+§8 recorded that the notes sit at the correct `sha256(did)[:16]` path and left the obvious next
+question alone: *which* implementation produced the `fp:` field. On 2026-08-28T15:49Z a third
+party, `0xricechan`, answered it on #368 — six candidate derivations tested, one matching every
+row and five matching none.
+
+**No search would have found this either.** The 01:5xZ sweep above ran fourteen hours earlier
+and returned four `faucet` hits, all four downstream of this repository. The answer arrived as a
+comment on this repository's own issue, from someone who went and measured. That is the second
+time in two days that the prior art which mattered came from a reply rather than the tracker,
+and it is now a pattern rather than an anecdote: **an open issue with `help wanted` on it is
+itself a search that keeps running.**
+
+What it changes about the search rule: nothing in the rule, and something in the schedule.
+Searching before measuring stays. Re-reading the thread on one's own open issues belongs beside
+it — the monitor already polls `github/my-issues` every thirty minutes for exactly this, and on
+2026-08-28 it recorded the comment count going 5 → 6 without anyone reading what arrived.
+
+### Checking an outside pass, and finding the disagreement was a spelling
+
+§11.1 records the mechanics. The short version belongs here because it is a method note, not a
+finding: the first re-measurement returned **15 / 58** on a candidate row the comment posted as
+**0 / 58**, and the data was identical. The candidate had been spelled *the DID as written in
+the body* rather than *always doubled*, and those two readings differ on exactly the 15 rows
+that were never doubled.
+
+**Publish the bytes you hashed, not the name of the hypothesis.** A candidate table reads like a
+table of facts, and every row in it is a claim about a string. This is the same shape as §10.5's
+finding about the word *malformed*: one phrase, two parses, and the number moves. Both parses
+are now printed in §11, which is the only version of that table that can be checked.
+
 ---
 
 ## Adding a row

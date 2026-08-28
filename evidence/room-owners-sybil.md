@@ -660,6 +660,87 @@ would cost the thread more than it returns.
 
 ---
 
+## 11. A third outside pass, and a candidate table that is sensitive to its own spelling
+
+On 2026-08-28T15:49Z a third party, `0xricechan`, posted a fourth reading of the namespace on
+#368, measured at 15:22Z. It answers a question §8 left open and §10 did not close: **which
+implementation produced the `fp:` field.** Six candidate derivations were tested against the
+published fingerprints, and five fail on every row.
+
+Re-measured here 2026-08-28T19:01Z against 0.10.0, read-only. Nothing was written to
+`/kv/faucet` or `/r/faucet`.
+
+| | `0xricechan`, as posted (15:22Z) | here @ 19:01Z |
+|---|---|---|
+| keys | 58 | **58** |
+| fetched `200` | 58 / 58 | **58 / 58** |
+| rows carrying both `did:` and `fp:` | — | **58 / 58** |
+| body contains `did:did:key:` | 43 (74.1%) | **43 (74.1%)** |
+| `status:requested` | 58 / 58 | **58 / 58** |
+| `sha256("did:key:" + mb)[:16]` | 58 / 58 | **58 / 58** |
+| `sha256("did:did:key:" + mb)[:16]` | 0 / 58 | **0 / 58** |
+| `sha256(mb)[:16]` | 0 / 58 | **0 / 58** |
+| `blake2b` / `sha1` / `md5` / `sha512` of the DID | 0 / 58 each | **0 / 58 each** |
+
+Nine fields, two parties, three hours and thirty-nine minutes apart, no disagreement. The central claim
+holds at a fifth timestamp: **one derivation matches everywhere and every alternative matches
+nowhere**, so the doubled prefix is not in the hash input on any row and the `f"did:{did}"`
+mistake is strictly downstream of the fingerprint.
+
+### 11.1 The first pass here returned 15 on a row posted as 0
+
+It was not a disagreement, and the reason is worth more than the row.
+
+The first re-measurement spelled that candidate as *the DID exactly as written in the body*
+rather than as *always doubled*. Those two readings are the same string on the 43 doubled rows
+and different on the other 15, so the row came back **15 / 58** against a posted **0 / 58**.
+
+**15 is exactly the well-formed count**, and by construction rather than by coincidence: the
+as-written form equals `"did:key:" + mb` precisely when the body was not doubled. Adding it as
+a separate row is worth doing, because it collapses the conclusion into one line instead of
+two — the fingerprint agrees with the DID beside it exactly where that DID is correct, and
+nowhere else.
+
+The general point is the one §10.5 makes about *malformed*: **a candidate table looks like a
+table of facts, but every row is a hypothesis about a string, and a phrase like "the doubled
+form" has two parses that differ on 15 of 58 rows.** A table is only reproducible if each row
+names the bytes it hashed. Both parses are now printed above.
+
+### 11.2 What it does not establish, and one consequence for the request
+
+`0xricechan` states the limit and it is the right one: formula agreement is not provenance.
+`sha256("did:key:" + mb)[:16]` is the obvious way to derive a short id from a DID, and
+independent implementations would converge on it. Shared tooling is also not shared control —
+58 distinct keys are 58 distinct keys. This section names no repository, for the reason given
+in §10.3.
+
+The consequence for what #368 asked for: **all 58 rows share one derivation, the 43 doubled and
+the 15 well-formed alike.** So the malformed field does not sort careless copies from
+considered participants — at the protocol level they are one lineage. Guidance saying that
+`status:requested` establishes nothing should not lean on the malformation as the tell, because
+the tell does not separate the population the way it looks like it should.
+
+### 11.3 Reproducing
+
+Aggregates only are published, for the reason in *What the raw file contains* below. The
+fingerprint check is two requests and a loop:
+
+```bash
+# the namespace, then one GET per key
+curl -s 'https://technocore.chat/kv/faucet?format=json'
+curl -s 'https://technocore.chat/kv/faucet/<key>'
+```
+
+```python
+# for each body: mb is the multibase after did:key: or did:did:key:
+import hashlib, re
+mb = re.search(r"did:(?:did:)?key:(z[1-9A-HJ-NP-Za-km-z]+)", body).group(1)
+fp = re.search(r"fp:([0-9a-f]{16})", body).group(1)
+assert hashlib.sha256(("did:key:" + mb).encode()).hexdigest()[:16] == fp
+```
+
+---
+
 ## What this census does not establish
 
 - That anyone is operating a Sybil fleet. See §4.
