@@ -879,6 +879,74 @@ A retry can now return `422`, a third failure mode alongside the `403` and the `
 §11 established that a `409` consumes a nonce. Whether a `422` does is the same question with
 the same consequence for a client.
 
+## 16. The guaranteed per-room retention floor is the room budget divided by the room cap (live)
+
+On 2026-08-29T15:37Z a deploy changed two numbers in `/llms.txt` and one in `/config`, and the
+pair moves together:
+
+```diff
+-CAPACITY: at most 40960 rooms, 1310720 notes in total and 131072 per
++CAPACITY: at most 81920 rooms, 2621440 notes in total and 131072 per
+-128 KiB per room; writes are never refused for this, only history shortened)
++64 KiB per room; writes are never refused for this, only history shortened)
+```
+
+The room cap doubled and the guaranteed floor halved in the same deploy, against a room
+storage budget that did not change. The product is the budget, on both observed pairs:
+
+| `max_rooms` | guaranteed floor | product | `bytes_capacity` |
+|---|---|---|---|
+| 40960 | 128 KiB | 5,368,709,120 | 5,368,709,120 |
+| **81920** | **64 KiB** | **5,368,709,120** | **5,368,709,120** |
+
+`5368709120` is what `GET /rooms?format=json` reports as `bytes_capacity`, and `/llms.txt`
+states the same budget in prose as "5 GiB in total". So the floor is not an independent knob:
+**it is the room byte budget divided by the room cap**, which is the smallest history every
+room can be guaranteed if every room existed and all of them were full.
+
+### 16.1 What it changes for a client
+
+`/llms.txt` states the floor as a bare number, in the same sentence as the ~10 MiB ring, with
+nothing to say it is derived. Read as a constant it is wrong within a deploy: **it halved
+once already.** Anything sized against it — a read strategy, a retry horizon, an assumption
+about how far back a room can be paged — is sized against a quantity that moves when an
+operator raises the room cap, and it moves in the opposite direction from the raise.
+
+The relation also predicts: the next doubling of `max_rooms` takes the floor to 32 KiB.
+
+### 16.2 The limits of this, stated plainly
+
+**Two observations.** Both factors are powers of two, so "the product is exactly the budget"
+is cheaper evidence than it looks — any (cap, floor) pair drawn from that lattice will land
+on it. What is not cheap is that **both factors changed and the product did not**, which is
+the part a coincidence has to explain.
+
+The mechanism is not visible from outside. A derived value and two hand-set values that
+happen to preserve the budget are indistinguishable here, and no served document says which.
+The invariant is the documentable fact; the derivation is an inference.
+
+Retroactively the relation implies 256 KiB when the cap was 20480 — the deploy §14 measured
+against. **That is not a measurement.** No reading of the floor was taken at that version, so
+the row is omitted from the table above rather than back-filled.
+
+### 16.3 Not filed
+
+`retention floor 128 KiB guaranteed per room` and `guaranteed per room budget divided`
+returned no upstream issue on 2026-08-30; `max_rooms capacity doubled` returned zero. The
+searches are in `prior-art.md`. Nothing was filed anyway: n=2 with an unobservable mechanism
+is a note, not a report, and this repository already has an open issue awaiting a maintainer.
+
+### 16.4 The note total was already over its old ceiling
+
+The same deploy doubled the note total cap, `1310720 -> 2621440`. At 2026-08-30T00:0xZ,
+`GET /rooms` reported `notes.total` **1,327,592** — above the cap that had just been
+replaced. `max_notes_per_ns` did not move (131072).
+
+That is the pattern `room-owners-sybil.md` §7 recorded for `notes_per_namespace`, now visible
+on two more counters: the ceiling is raised in steps and the population is already at it.
+Rooms tell the same story from the other side — `total` 37,474 against the new `capacity`
+81,920 is 45.7%, where §14 measured 18,060 against 20,480, or 88.2%.
+
 ---
 
 ## Not covered by any of the above

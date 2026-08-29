@@ -90,6 +90,22 @@ Issue numbers seen in passing, worth knowing they exist:
   — a community census, and the closest analogue to the work in this repository.
   Useful as a model for how such a report is written and received.
 
+### 2026-08-30
+
+Run **after** measuring `/r/lobby` for three minutes, which is the wrong order and is why this
+block records three hits instead of a finding.
+
+| Term | Hits | Relevant |
+|---|---|---|
+| `engagement` | 15 | **#334** *"`/rooms` serves six engagement numbers that no document names, and one divides a service-wide numerator by a page-scoped denominator"* — `documentation` + `help wanted`, open since 08-27. **#342** documents the schema, **#432** includes unlisted rooms, **#225** adds a metric |
+| `zero_response_share` | 5 | #334, #225, **#149**, #164 |
+| `nick_diversity` | 5 | same set |
+| `lobby conversation reply` | 1 | **#269** — `124k new identities/day, 63 % one-message`. Already in the table above as the closest analogue to this repository's work |
+| `dupe worker` / `dupe_max_copies` | 1 / 4 | **#348** (merged) states the ring is *"per-worker, per-room"* and reports `W=5 catch 50.8% (sharding cost, reported not gated)`. **#425** already writes the operator-facing consequence: *"An operator reading DUPE_MAX_COPIES=5 would be getting 20"* |
+| `retention floor 128 KiB guaranteed per room` | 1 | #128, unrelated (signed-lane text budget) |
+| `guaranteed per room budget divided` | 1 | #244, unrelated (IEC formatter) |
+| **`max_rooms capacity doubled`** | **0** | A recorded zero. `conformance.md` §16 is written against it |
+
 ---
 
 ## The rate limit will stop you, and it is worth planning around
@@ -397,6 +413,58 @@ that were never doubled.
 table of facts, and every row in it is a claim about a string. This is the same shape as §10.5's
 finding about the word *malformed*: one phrase, two parses, and the number moves. Both parses
 are now printed in §11, which is the only version of that table that can be checked.
+
+### Three findings, three issues, thirty seconds — and one of them corrected the method, not the priority
+
+On 2026-08-29 a user challenged a claim in this repository's own reasoning: `/r/lobby` messages
+leave the readable window in about nine seconds, and that had been used as evidence that posting
+there is worthless. The challenge was that conversation does not need persistence. It was right.
+`/r/lobby` was sampled for 182 seconds — 2,546 messages, `seq` contiguous, nothing lost — and a
+reply pair was found whose quoted original is in the sample: **1.7 seconds later, nine messages
+on, deep inside the window.**
+
+Three things came out of that sample. All three were already upstream:
+
+| Observed here | Already filed |
+|---|---|
+| 98.7% of senders posted exactly once in three minutes; the top ten texts each ~53 copies from ~53 distinct DIDs | **#269**, and **#149** for the sibling room `/r/technocore` — 80% template share, labelled `bug` |
+| The duplicate filter let 25 byte-identical copies land in one 60-second window against a published cap of 5 | **#348**, which designed it that way and published the sharding cost |
+| `/rooms` serves an `engagement` object that no served document defines | **#334**, with `help wanted` on it |
+
+**The third one is the one worth the section, because #438 does not just predate the measurement
+— it explains a mistake the measurement could not have caught.** `zero_response_share` is
+computed from *adjacency*: whether consecutive messages come from different writers. So a room
+where forty agents each post one independent template line scores as **maximal turn-taking**.
+#438 states it directly: *"In `/r/lobby` forty messages from forty writers, several of them byte
+identical templates, score as though everyone were taking turns."*
+
+Had the three-minute sample been published, it would have sat beside a server-published number
+that appears to contradict it, and this repository could not have said why. The correction is not
+"someone got there first." It is that **the instrument was misread, and the tracker held the
+reading.** #438 measures hourly across 232 rooms; the sample here was one room for three minutes.
+
+The methodological failure was also self-inflicted and worth naming. The first pass tested
+"does this message reference another sender" by searching for a **full** DID, and returned
+**0 / 2,546**. The room's convention is truncated — `@z6Mk…VuGh`, `did:key:z6Mkhx...` — so that
+matcher could not have found a reference if every message carried one. Corrected: 221 / 2,546.
+Same shape as `sweep_probe.py`'s `A<char>B` wrapper hiding the end-trim for four commits: **a
+measurement apparatus that cannot express the thing being measured returns a clean zero.**
+
+What changed in the schedule, again: the search was run *after* the measurement. Twice now the
+rule has been stated and not obeyed, and both times the cost was hours rather than a wrong
+publication — because the search still ran before publishing. **That is the gate that has never
+failed; the one that keeps failing is the one that saves the time.**
+
+### One row that stayed a note
+
+`conformance.md` §16 came out of the same day and is the only thing published from it: the
+guaranteed per-room retention floor halved, `128 KiB -> 64 KiB`, in the deploy that doubled
+`max_rooms`, and the product is the unchanged 5 GiB room budget on both pairs. `max_rooms
+capacity doubled` returned zero upstream.
+
+It is still a note rather than a report. **n=2, with a mechanism that is not observable from
+outside** — a derived value and two hand-set values that preserve a budget look identical from
+here. It is written into the audit with that limit in the section, and nothing was filed.
 
 ---
 
