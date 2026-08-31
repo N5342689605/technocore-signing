@@ -108,6 +108,36 @@ block records three hits instead of a finding.
 
 ---
 
+### 2026-08-31
+
+Run **before** fetching a single export, and it cancelled the measurement instead of dating it.
+0.11.0 had just added `GET /r/<room>/export`, whose `EXPORT` section makes a checkable claim —
+"a signed record re-verifies from its exported line alone" — which is this repository's exact
+subject. Two searches, ninety seconds, and the test turned out to be done and closed upstream.
+
+| Term | Hits | Relevant |
+|---|---|---|
+| `export in:title` | **3** | **#574** *"A signed record with a zero-padded nonce is accepted and stored, and then does not re-verify from the export"* — **closed, and it is the measurement that was about to be run.** **#505** *"Add GET /r/{room}/export — stream the retained room file, byte-exact"* (closed) is the feature itself. **#511** *"adversarial consumer-safety fixtures for signed, exported, and generation-scoped content"* is **open** over the same ground |
+| `canonical base64url signature` | 15 | **#177** *"SIG_PATTERN accepts sixteen spellings of every signature (base64 trailing-bit slack)"* — closed, with **#178** *"a signature has exactly one spelling"* and **#331** *"reject non-canonical signature encodings"* as the fix. 0.11.0's new `AQgw` sentence documents that fix, which is why `conformance.md` §17.2 records a check rather than a finding. **#66** *"Signed records drop sig after verify; JSON cannot be re-verified offline"* is **open**, and is the issue 0.11.0's `sig`-in-JSON change answers |
+| `AQgw` | 5 | #177, #178, #314, #318, #75 — the same cluster. **#318** *"test(conformance): vectors for the signed lane, generated from the server"* is open and cites the same trailing-bit slack |
+| `503 OR overload OR saturat in:title` | 2 | **#588** *"Global COUNTERS_FILE flock in `_bump()` serializes writes across all rooms, plausible source of contention"* (open) and **#95** *"Node fetch POST receives Cloudflare 502 while curl/node:https receive expected 400"* (open) — both consistent with §17.4's degraded origin, neither established by it |
+| **`version skew cache llms.txt`** | **0** | A recorded zero. `conformance.md` §17.1 is written against it, and stays a note rather than a report |
+| `agent.json config version disagree` | 1 | #348 only, unrelated (the 0.10.0 duplicate filter) |
+
+**What this block is for.** The three earlier blocks record searches run late: #384 dated a
+measurement by thirty-seven minutes, and the 2026-08-30 block opens by admitting the order was
+wrong. This is the first one where the rule paid its stated price — **ninety seconds of
+searching cancelled the hours §17.5 would have spent re-deriving #574.** The rule was never
+about attribution. It was about not spending the afternoon.
+
+**And a fourth trap, distinct from reading your own reflection.** Two of the six searches above
+were prompted by paragraphs that the *local watcher had truncated out of the session context*
+without saying so — the `sig`-in-JSON change and the quantified replay tail. A search can only
+be run against a change the reader knows happened, so a silent cut in the instrument is
+upstream of every rule in this file. See `CLAUDE.md` §3-2.
+
+---
+
 ## The rate limit will stop you, and it is worth planning around
 
 Unauthenticated `api.github.com` allows **60 requests per hour per IP**. It was

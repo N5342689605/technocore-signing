@@ -949,6 +949,178 @@ Rooms tell the same story from the other side — `total` 37,474 against the new
 
 ---
 
+## 17. The 0.11.0 boundary: what moved under the signing lane, and what did not (live)
+
+0.11.0 reached this deployment on 2026-08-31. Nothing here is a new measurement of server
+behaviour — the origin was refusing a tenth of its requests all morning (§17.4), which is the
+wrong condition to measure in. What this section records is the boundary itself: which earlier
+sections the deploy invalidates, which it leaves standing, and which of its new rules this
+implementation already satisfied.
+
+### 17.1 The three META surfaces were observed disagreeing
+
+`/llms.txt` says the machine-readable pair "says the same thing in JSON ... generated from the
+same constants the server enforces". Across this deploy they did not:
+
+| Surface | Last seen `0.10.0` | First seen `0.11.0` |
+|---|---|---|
+| `/llms.txt` (prose) | 2026-08-30T19:07:02Z | 05:14:57Z |
+| `/config` | 05:14:57Z | 05:37:02Z |
+| `/.well-known/agent.json` | 05:37:02Z | 06:07:02Z |
+
+All three are fetched in one pass by the same poller, so a surface that did not change in a
+pass really did still hold the old value at that instant. Two disagreements were therefore
+observed directly, not inferred:
+
+- at **05:14:57Z** the prose described 0.11.0 while `/config` answered `"version": "0.10.0"`;
+- at **05:37:02Z** the prose and `/config` both said 0.11.0 while `agent.json` said `0.10.0`.
+
+Full agreement was first observed at 06:07:02Z, so the skew resolved **within 52 minutes of
+being first seen.** The duration cannot be bounded from below: the poller did not run between
+2026-08-30T19:07:02Z and 05:14:57Z — a ten-hour gap, the same class of gap `run_watch.py`
+documents — so the prose may have been ahead of `/config` for anywhere from seconds to ten
+hours before the first observation. **What is established is that they disagreed, not for how
+long.**
+
+**The likely mechanism is cache lifetime, not a staged deploy**, and that is not a guess from
+nothing: `/config` and `/llms.txt` answer in 0.07 s where every origin-served path took 1–5 s
+that morning (§17.4), so they were edge hits, and this release carries a commit that changes
+exactly this — `perf(docs): cache the JSON documents the way the prose ones are cached`. The
+consequence for a client is the same either way: **a version read from one surface and a limit
+read from another can come from two different releases.**
+
+n=1, with a mechanism not observable from outside. `version skew cache llms.txt` returned zero
+upstream on 2026-08-31 (`prior-art.md`). By the standard §16.3 set, that makes this a note and
+not a report.
+
+### 17.2 The two new signing rules, and why this implementation already met both
+
+0.11.0 states two rules that the server enforced silently before. Neither required a change
+here — and "no change needed" is only evidence if the reason is written down.
+
+**A signature has exactly one spelling.** `<sig>` is now specified as canonical: "sixteen
+strings decode to the same 64 bytes, so the last character must be the one the encoder
+produces, always one of AQgw."
+
+Checked offline against this tool's encoder — `base64.urlsafe_b64encode(sig).rstrip("=")`,
+`technocore_did.py:467` — over 200,000 random 64-byte signatures:
+
+| Property | Result |
+|---|---|
+| Length | 86 characters, all 200,000 |
+| Final character | `{A, Q, g, w}` only — 50,149 / 50,096 / 50,275 / 49,480 |
+| Spellings decoding to one 64-byte value | 16 (`A`…`P`, where the canonical one is `A`) |
+
+Canonical by construction: 64 bytes is 512 bits and 86 base64 characters carry 516, so the
+final character holds four data bits and two of padding. An encoder zeroes those two, which is
+exactly what restricts it to those four characters — and the manual's "sixteen" is the slack in
+the same two bits.
+
+**Already filed and fixed upstream, and the search found it before this section was written.**
+#177 — *"SIG_PATTERN accepts sixteen spellings of every signature (base64 trailing-bit
+slack)"* — is closed, with #178 *"a signature has exactly one spelling"* and #331 *"reject
+non-canonical signature encodings"*. 0.11.0's manual is the documentation of that fix, not a
+new finding. What is added here is only that the client side was never on the wrong side of it.
+
+**`if_absent` and `if=` cannot be sent together.** A true `if_absent` beside `if=` is now a
+400. Before, per the manual's own account, "an unrecognised spelling read as true, and an `if=`
+sent beside a true `if_absent` was dropped and the reply still said ok". §11 claimed a `d-` room
+with `?if_absent=1` as the only condition and never sent `if=`, so §11 stands and the tool needs
+no change.
+
+The part that matters for §11's durability: the behaviour it relied on used to be silent, so a
+re-run against 0.11.0 measures a stricter server. The claim path is unaffected. A handover —
+`?if=<current value>`, still under "Not covered" — would now be measured under the new rule.
+
+### 17.3 What 0.11.0 did not touch
+
+- **§13 (the trim).** The `SINGLE LINE` paragraph falls outside every hunk of this deploy's
+  diff, "then the ends are trimmed" included. §13 stands as measured.
+- **§16 (the retention floor).** `81920` rooms, the `64 KiB` guaranteed floor and `2621440`
+  total notes are unchanged from the 2026-08-29 deploy §16 was written against; `CAPACITY` and
+  `RETENTION` are context lines in this diff, not changed ones. §16.1's prediction — that the
+  next doubling of `max_rooms` takes the floor to 32 KiB — remains untested, because the cap
+  did not move.
+- **`max_notes_total` is not a new number.** It appears in `/config` for the first time in this
+  release, and the `/config` diff on its own reads as a new cap. It is not one: `/llms.txt` has
+  stated `2621440` since 2026-08-29 and §16.4 recorded it then. What is new is that the knob is
+  *published* (upstream `feat(config): give the global note cap its own knob`). **A diff of one
+  surface is not a change in the quantity** — this was misread once in the session that wrote
+  this section, and caught by re-reading §16.4 rather than by the diff.
+
+### 17.4 Why no live number was taken on 2026-08-31
+
+The origin was degraded throughout. Two samples of `/healthz` — a path the manual lists as
+never rate limited, whose entire body is `ok`:
+
+| Window (UTC) | n | 200 | 503 | 200 latency min / median / max |
+|---|---|---|---|---|
+| 06:28:04–06:29:10Z | 24 | 20 (83%) | 4 (17%) | 1.28 / 1.95 / 3.09 s |
+| 06:37:47–06:38:57Z | 20 | 18 (90%) | 2 (10%) | 1.25 / 2.65 / 4.64 s |
+
+The 503s are Cloudflare's, returned in 0.16–0.32 s — too fast to be the origin answering — and
+they carry no `Retry-After`. They are spread evenly through both windows rather than clustered,
+and `/healthz` went 200 → 503 → 200 inside four minutes, so this is an origin refusing a
+fraction of connections, not an outage. Edge-cached documents were served throughout at 0.07 s;
+every path reaching the origin was affected, `/rooms` at 4.87 s included.
+
+**This is why §17 carries no new server measurement.** A conformance number taken at a 10–17%
+error rate and 2–5 s latency records the load, not the protocol. §14 is the precedent: a
+measurement there was broken by a server sitting at a capacity boundary, and that section
+exists mostly to say so.
+
+Not filed. An operator sees their own error rate, and two 20-request windows from one IP is not
+a report. The nearest upstream items are #588 (*"Global COUNTERS_FILE flock in `_bump()`
+serializes writes across all rooms, plausible source of contention"*, open) and #95
+(*Cloudflare 502 returned where the origin had answered 400*, open) — both consistent with
+this, neither established by it.
+
+### 17.5 `/export` exists, and its re-verification claim is already taken
+
+`GET /r/<room>/export` is reachable, and behaves as documented at the one degenerate case that
+costs nothing to check:
+
+```
+GET /r/flop-no-such-room-zzz9/export
+200   0 bytes   Content-Type: application/x-ndjson; charset=utf-8   (no X-Room-Generation)
+
+GET /r/flop-no-such-room-zzz9
+200   "# room flop-no-such-room-zzz9  messages 0  range None..0"
+```
+
+A missing room exports as empty, as the manual says, and the `X-Room-Generation` header the
+manual describes is absent on that reply — there is no conversation epoch to stamp when there is
+no room. That is the whole of what was measured: one request against a room that does not exist.
+
+**The interesting measurement here belongs to someone else.** #574 — *"A signed record with a
+zero-padded nonce is accepted and stored, and then does not re-verify from the export"* — is
+closed, and it is precisely the re-verification test this repository would have run against its
+own signed record. #511 (*adversarial consumer-safety fixtures for signed, exported and
+generation-scoped content*) is open over the same ground. The search took ninety seconds and was
+run before any export was fetched from a real room; `prior-art.md` records it. **This is the
+first time in this repository that the search ran early enough to cancel the measurement rather
+than to date it.**
+
+Two paragraphs arrived with 0.11.0 that bear directly on entries under "Not covered":
+
+- **The replay tail is now quantified.** "`sig` adds 95 bytes to every signed record, so a room
+  of short signed messages fits roughly a third fewer records into the scanned window, and the
+  floor shortens with it" — and "`sig` is also served to every reader of the room (for a `p-`
+  room, every holder of the name), so the material a replay needs reaches any cursor-following
+  reader, not just whoever held the signed URL." The "Not covered" entry on nonce replay past
+  the 1 MiB tail is still unmeasured, but it is no longer under-described by the manual.
+- **`?format=json` now carries `sig`**, so a record re-verifies from the JSON alone; records
+  written before the field existed lack it, and a missing `sig` means "not re-verifiable", not
+  "invalid". Upstream #66 — *"Signed records drop sig after verify; JSON cannot be re-verified
+  offline"* — is what this answers, and it is still open.
+
+Neither paragraph reached this session's context on its own. Both sat inside the 43 rendered
+diff lines that the local watcher cut without saying it had cut anything, on the probe whose own
+description is "where the faucet lane will appear". That defect is recorded in `CLAUDE.md` §3-2,
+because it is a property of the instrument and not of the server.
+
+---
+
 ## Not covered by any of the above
 
 - Rate limit thresholds. Never hit one, so the documented per-IP buckets are untested here.
