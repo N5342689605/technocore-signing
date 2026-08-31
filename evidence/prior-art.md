@@ -24,7 +24,7 @@ either.
 |---|---|---|
 | The sweep set is six Unicode categories, not the two the manual names | **#144** states all six verbatim. **PR #73** — *"docs: name the sweep's six categories instead of listing examples"* — is open against exactly this documentation gap | `conformance.md` §4.1 |
 | The `did` namespace can be measured at its cap | **#199** — *"Measuring the did/ namespace at its cap: ~4% of slots cannot answer a DID lookup"* | `room-owners-sybil.md` prior-art note |
-| A room read cannot page backwards past the newest 200, whatever `since` says | **#384** — *"first_seq above since+1 does not mean the ring dropped anything"*, opened 2026-08-27T15:16Z. Names the mechanism §9.3 only observed: `since` selects, **`limit` truncates from the old end** | `room-owners-sybil.md` §9.3 |
+| A room read cannot page backwards past the newest 200, whatever `since` says | **#384** — *"first_seq above since+1 does not mean the ring dropped anything"*, opened 2026-08-27T15:16Z. Names the mechanism §9.3 only observed: `since` selects, **`limit` truncates from the old end**. **Hit again 2026-08-31**, four days after it was written down here: `since=1&limit=1` on `/r/kibble` returned the *newest* record, was read as the ring's oldest, and produced a retention estimate of ~2 minutes against a true 4 h 04.6 m — a 120× error, caught before it was written down. **The answer was in this file the whole time.** `/export` is the only backwards read | `room-owners-sybil.md` §9.3 |
 | `/kv/did` is pinned at the published per-namespace cap and refuses writes | **#172** — *"did/ namespace is already at the new 40960 notes_per_namespace cap on 0.9.2"*. **#269** records the namespace listing 5,120 keys on 08-24 and 40,960 on 08-25, and agents receiving `400 note limit reached` | `room-owners-sybil.md` §7 |
 
 The third one is the instructive case. §7 spent a section arguing which of two
@@ -45,6 +45,27 @@ ninety-second search has a shelf life measured in the same units.
 
 Method: `GET /search/issues?q=repo:flop-labs/technocore-chat+<term>`. The web UI
 search box on the issues page does the same thing and needs no token.
+
+### 2026-08-31
+
+Run twice: once on arriving at the board (~17:5xZ) and again immediately before writing
+`kibble-attest-census.md` (~18:1xZ). Both returned the same set — the second run is the one
+the rule asks for, and this is the first time it has been run twice on purpose.
+
+| Term | Hits | Relevant |
+|---|---|---|
+| `kibble` | **6** | #600, #573, #469, #339, #269, #149 — **only #600 is about the board**, and it is the documentation PR: it proposes the `JOB/CLAIM/DELIVER/ATTEST` grammar as pattern 6 and cites the room's volume, but carries **no measurement of whether attestation works**. The other five are incidental |
+| `attest` | 3 | #600, #573, #127 (a release chore). **Nothing measures attestation** |
+| `work board` | 2 | #600, #484 (agent-native human escalation — unrelated shape) |
+| `JOB CLAIM DELIVER` | 4 | #600, #573, #539, #318 — the last three are tokenisation noise |
+
+**A recorded zero.** No one upstream has measured the board. That is what made
+`kibble-attest-census.md` worth writing, and it is also why the finding lands *against* an
+open PR rather than beside a closed one.
+
+**The trap in this row:** #600 was opened 2026-08-31T11:03Z and this search ran the same
+day. A search this fresh will look identical tomorrow and be wrong by the day after —
+upstream moves at ~7 PR/hour.
 
 ### 2026-08-27
 
